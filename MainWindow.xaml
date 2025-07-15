@@ -1,0 +1,54 @@
+﻿<Window x:Class="QuickMigrate.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="QuickMigrate" 
+        Height="600" Width="1000">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- En-tête -->
+        <TextBlock Grid.Row="0" 
+                   Text="QuickMigrate" 
+                   FontSize="24" 
+                   FontWeight="Bold" 
+                   HorizontalAlignment="Center"
+                   Margin="20"/>
+
+        <!-- Contrôles -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
+            <Button Content="Scanner les logiciels" 
+                    Command="{Binding StartScanCommand}"
+                    Padding="20,10"
+                    Margin="10"
+                    FontSize="14"/>
+
+            <Button Content="Arrêter" 
+                    Command="{Binding StopScanCommand}"
+                    Padding="20,10"
+                    Margin="10"
+                    FontSize="14"/>
+
+            <TextBlock Text="{Binding ScanStatus}" 
+                       VerticalAlignment="Center"
+                       Margin="20,0"/>
+        </StackPanel>
+
+        <!-- Liste -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding SoftwareList}"
+                  AutoGenerateColumns="False"
+                  Margin="20">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Nom" Binding="{Binding Name}" Width="300"/>
+                <DataGridTextColumn Header="Éditeur" Binding="{Binding Publisher}" Width="200"/>
+                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="100"/>
+                <DataGridTextColumn Header="Catégorie" Binding="{Binding Category}" Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>

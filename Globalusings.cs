@@ -1,0 +1,14 @@
+﻿global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Threading.Tasks;
+global using Microsoft.Extensions.DependencyInjection;
+global using CommunityToolkit.Mvvm.ComponentModel;
+global using CommunityToolkit.Mvvm.Input;
+global using Microsoft.Win32;
+global using QuickMigrate.Models;
+global using System.IO;
+global using QuickMigrate.Services;
+global using System.Collections.ObjectModel;
+global using System.Threading;
+global using System.Windows;
