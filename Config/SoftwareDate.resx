@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+	<xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+		<xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+		<xsd:element name="root" msdata:IsDataSet="true">
+			<xsd:complexType>
+				<xsd:choice maxOccurs="unbounded">
+					<xsd:element name="metadata">
+						<xsd:complexType>
+							<xsd:sequence>
+								<xsd:element name="value" type="xsd:string" minOccurs="0" />
+							</xsd:sequence>
+							<xsd:attribute name="name" use="required" type="xsd:string" />
+							<xsd:attribute name="type" type="xsd:string" />
+							<xsd:attribute name="mimetype" type="xsd:string" />
+							<xsd:attribute ref="xml:space" />
+						</xsd:complexType>
+					</xsd:element>
+					<xsd:element name="assembly">
+						<xsd:complexType>
+							<xsd:attribute name="alias" type="xsd:string" />
+							<xsd:attribute name="name" type="xsd:string" />
+						</xsd:complexType>
+					</xsd:element>
+					<xsd:element name="data">
+						<xsd:complexType>
+							<xsd:sequence>
+								<xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+								<xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+							</xsd:sequence>
+							<xsd:attribute name="name" use="required" type="xsd:string" />
+							<xsd:attribute name="type" type="xsd:string" />
+							<xsd:attribute name="mimetype" type="xsd:string" />
+							<xsd:attribute ref="xml:space" />
+						</xsd:complexType>
+					</xsd:element>
+					<xsd:element name="resheader">
+						<xsd:complexType>
+							<xsd:sequence>
+								<xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+							</xsd:sequence>
+							<xsd:attribute name="name" type="xsd:string" use="required" />
+						</xsd:complexType>
+					</xsd:element>
+				</xsd:choice>
+			</xsd:complexType>
+		</xsd:element>
+	</xsd:schema>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+
+	<!-- Patterns d'exclusion -->
+	<data name="ExcludePatterns" xml:space="preserve">
+    <value>Security Update;Hotfix;Update for;KB;Cumulative Update;Microsoft Visual C++ 20;Microsoft .NET Framework;Windows SDK;Microsoft Visual C++ 2005;Microsoft Visual C++ 2008;Microsoft Visual C++ 2010;Microsoft Visual C++ 2012;Microsoft Visual C++ 2013;Microsoft Visual C++ 2015;Microsoft Visual C++ 2017;Microsoft Visual C++ 2019;Microsoft Visual C++ 2022;Microsoft .NET Core;Microsoft .NET Desktop Runtime;Microsoft ASP.NET Core;Windows Software Development Kit;Microsoft Help Viewer;WinRT Intellisense;Windows Application Compatibility;Windows Live;Microsoft Application Error Reporting;Microsoft Windows Desktop Runtime;Microsoft Silverlight;Microsoft XNA Framework;Intel(R);NVIDIA;AMD Catalyst;Realtek;Driver;WHQL;Adobe Flash Player;Adobe AIR;Java Auto Updater;Google Update Helper;Mozilla Maintenance Service;Microsoft Edge Update;Microsoft Edge WebView2;Redistributable;Runtime;Service Pack</value>
+  </data>
+
+	<!-- Logiciels utilisateur connus -->
+	<data name="KnownSoftware" xml:space="preserve">
+    <value>Visual Studio Code:Développement;Visual Studio 2019:Développement;Visual Studio 2022:Développement;Git:Développement;GitHub Desktop:Développement;Docker Desktop:Développement;Node.js:Développement;Python:Développement;Android Studio:Développement;Unity:Développement;Postman:Développement;Notepad++:Développement;Google Chrome:Navigateurs;Mozilla Firefox:Navigateurs;Microsoft Edge:Navigateurs;Opera:Navigateurs;Brave:Navigateurs;VLC media player:Multimédia;Spotify:Multimédia;iTunes:Multimédia;Audacity:Multimédia;GIMP:Multimédia;Adobe Photoshop:Multimédia;Adobe Illustrator:Multimédia;Adobe Premiere Pro:Multimédia;OBS Studio:Multimédia;Handbrake:Multimédia;Steam:Jeux;Epic Games Launcher:Jeux;Battle.net:Jeux;Origin:Jeux;Ubisoft Connect:Jeux;GOG Galaxy:Jeux;Discord:Communication;TeamSpeak:Communication;Skype:Communication;Microsoft Teams:Communication;Zoom:Communication;Slack:Communication;Telegram:Communication;WhatsApp:Communication;Microsoft Office:Bureautique;LibreOffice:Bureautique;OpenOffice:Bureautique;7-Zip:Utilitaires;WinRAR:Utilitaires;CCleaner:Utilitaires;Malwarebytes:Utilitaires;PuTTY:Utilitaires;FileZilla:Utilitaires;WinSCP:Utilitaires;Everything:Utilitaires;TreeSize:Utilitaires;Paint.NET:Utilitaires;IrfanView:Utilitaires;MySQL:Base de données;PostgreSQL:Base de données;MongoDB:Base de données;SQL Server Management Studio:Base de données;Azure Data Studio:Base de données;VMware Workstation:Virtualisation;VirtualBox:Virtualisation</value>
+  </data>
+
+	<!-- Éditeurs à exclure -->
+	<data name="ExcludePublishers" xml:space="preserve">
+    <value>Intel Corporation;NVIDIA Corporation;Realtek;Oracle Corporation</value>
+  </data>
+</root>

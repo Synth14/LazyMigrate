@@ -1,27 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
-    <AssemblyName>QuickMigrate</AssemblyName>
-    <RootNamespace>QuickMigrate</RootNamespace>
-    <AssemblyTitle>QuickMigrate</AssemblyTitle>
-    <AssemblyDescription>Migration rapide et intelligente de logiciels</AssemblyDescription>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-    <Nullable>enable</Nullable>
-    <WarningsAsErrors />
-    <WarningsNotAsErrors>nullable</WarningsNotAsErrors>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<AssemblyName>QuickMigrate</AssemblyName>
+		<RootNamespace>QuickMigrate</RootNamespace>
+		<AssemblyTitle>QuickMigrate</AssemblyTitle>
+		<AssemblyDescription>Migration rapide et intelligente de logiciels</AssemblyDescription>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-    <PackageReference Include="Serilog" Version="3.1.1" />
-    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="System.Text.Json" Version="9.0.7" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Config\SoftwareDate.Designer.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>SoftwareDate.resx</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <EmbeddedResource Update="Config\SoftwareDate.resx">
+	    <Generator>ResXFileCodeGenerator</Generator>
+	    <LastGenOutput>SoftwareDate.Designer.cs</LastGenOutput>
+	  </EmbeddedResource>
+	</ItemGroup>
 
 </Project>

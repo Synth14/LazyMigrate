@@ -1,14 +1,15 @@
-﻿
-namespace QuickMigrate.Services
+﻿namespace QuickMigrate.Services
 {
     public class SoftwareScanner
     {
         private readonly IProgress<ScanProgress>? _progress;
+        private readonly LocalFilterService _filterService;
         private CancellationToken _cancellationToken;
 
         public SoftwareScanner(IProgress<ScanProgress>? progress = null)
         {
             _progress = progress;
+            _filterService = new LocalFilterService();
         }
 
         public async Task<List<SoftwareInfo>> ScanInstalledSoftwareAsync(CancellationToken cancellationToken = default)
@@ -19,7 +20,7 @@ namespace QuickMigrate.Services
             try
             {
                 _progress?.Report(new ScanProgress { Message = "Analyse du registre Windows...", Percentage = 10 });
-                await Task.Delay(500, cancellationToken); // Simule le temps de traitement
+                await Task.Delay(500, cancellationToken);
 
                 // Scan du registre 64-bit
                 var registry64 = await ScanRegistryAsync(RegistryView.Registry64);
@@ -63,46 +64,56 @@ namespace QuickMigrate.Services
 
         private async Task<List<SoftwareInfo>> ScanRegistryAsync(RegistryView registryView)
         {
-            return await Task.Run(() =>
+            var softwareList = new List<SoftwareInfo>();
+
+            try
             {
-                var softwareList = new List<SoftwareInfo>();
+                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, registryView);
+                using var uninstallKey = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
 
-                try
+                if (uninstallKey == null) return softwareList;
+
+                var subKeyNames = uninstallKey.GetSubKeyNames();
+
+                foreach (var subKeyName in subKeyNames)
                 {
-                    using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, registryView);
-                    using var uninstallKey = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
+                    _cancellationToken.ThrowIfCancellationRequested();
 
-                    if (uninstallKey == null) return softwareList;
-
-                    foreach (var subKeyName in uninstallKey.GetSubKeyNames())
+                    try
                     {
-                        _cancellationToken.ThrowIfCancellationRequested();
+                        using var subKey = uninstallKey.OpenSubKey(subKeyName);
+                        if (subKey == null) continue;
 
-                        try
+                        var software = CreateSoftwareFromRegistry(subKey);
+                        if (software != null)
                         {
-                            using var subKey = uninstallKey.OpenSubKey(subKeyName);
-                            if (subKey == null) continue;
+                            var filterResult = await _filterService.ShouldIncludeSoftwareAsync(software);
 
-                            var software = CreateSoftwareFromRegistry(subKey);
-                            if (software != null && IsValidSoftware(software))
+                            if (filterResult.ShouldInclude)
                             {
+                                // Utiliser la catégorie suggérée si disponible
+                                if (!string.IsNullOrEmpty(filterResult.SuggestedCategory))
+                                {
+                                    software.Category = filterResult.SuggestedCategory;
+                                }
+
                                 softwareList.Add(software);
                             }
                         }
-                        catch (Exception)
-                        {
-                            // Ignorer les erreurs de clés individuelles
-                            continue;
-                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Ignorer les erreurs de clés individuelles
+                        continue;
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Erreur scan registre {registryView}: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur scan registre {registryView}: {ex.Message}");
+            }
 
-                return softwareList;
-            });
+            return softwareList;
         }
 
         private SoftwareInfo? CreateSoftwareFromRegistry(RegistryKey key)
@@ -118,7 +129,7 @@ namespace QuickMigrate.Services
                 InstallPath = key.GetValue("InstallLocation")?.ToString() ?? string.Empty,
                 UninstallString = key.GetValue("UninstallString")?.ToString() ?? string.Empty,
                 IconPath = key.GetValue("DisplayIcon")?.ToString() ?? string.Empty,
-                Category = CategorizeSOFTWARE(displayName)
+                Category = "Autre" // Sera potentiellement remplacé par le filtrage
             };
 
             // Date d'installation
@@ -144,41 +155,48 @@ namespace QuickMigrate.Services
 
         private async Task<List<SoftwareInfo>> ScanProgramFilesAsync()
         {
-            return await Task.Run(() =>
+            var softwareList = new List<SoftwareInfo>();
+            var programFilesPaths = new[]
             {
-                var softwareList = new List<SoftwareInfo>();
-                var programFilesPaths = new[]
-                {
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
-                };
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+            };
 
-                foreach (var basePath in programFilesPaths.Where(Directory.Exists))
+            foreach (var basePath in programFilesPaths.Where(Directory.Exists))
+            {
+                try
                 {
-                    try
+                    var directories = Directory.GetDirectories(basePath);
+                    foreach (var dir in directories.Take(50)) // Limiter pour éviter la lenteur
                     {
-                        var directories = Directory.GetDirectories(basePath);
-                        foreach (var dir in directories.Take(50)) // Limiter pour éviter la lenteur
-                        {
-                            _cancellationToken.ThrowIfCancellationRequested();
+                        _cancellationToken.ThrowIfCancellationRequested();
 
-                            var dirInfo = new DirectoryInfo(dir);
-                            var software = CreateSoftwareFromDirectory(dirInfo);
-                            if (software != null)
+                        var dirInfo = new DirectoryInfo(dir);
+                        var software = CreateSoftwareFromDirectory(dirInfo);
+                        if (software != null)
+                        {
+                            var filterResult = await _filterService.ShouldIncludeSoftwareAsync(software);
+
+                            if (filterResult.ShouldInclude)
                             {
+                                if (!string.IsNullOrEmpty(filterResult.SuggestedCategory))
+                                {
+                                    software.Category = filterResult.SuggestedCategory;
+                                }
+
                                 softwareList.Add(software);
                             }
                         }
                     }
-                    catch (Exception)
-                    {
-                        // Ignorer les erreurs d'accès aux dossiers
-                        continue;
-                    }
                 }
+                catch (Exception)
+                {
+                    // Ignorer les erreurs d'accès aux dossiers
+                    continue;
+                }
+            }
 
-                return softwareList;
-            });
+            return softwareList;
         }
 
         private SoftwareInfo? CreateSoftwareFromDirectory(DirectoryInfo directory)
@@ -239,43 +257,6 @@ namespace QuickMigrate.Services
             }
         }
 
-        private bool IsValidSoftware(SoftwareInfo software)
-        {
-            // Filtrer les mises à jour Windows et autres entrées indésirables
-            var excludePatterns = new[]
-            {
-                "Security Update", "Hotfix", "Update for", "Microsoft Visual C++ 20",
-                "Microsoft .NET Framework", "Windows SDK", "KB"
-            };
-
-            return !excludePatterns.Any(pattern =>
-                software.Name.Contains(pattern, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private string CategorizeSOFTWARE(string name)
-        {
-            var categories = new Dictionary<string, string[]>
-            {
-                ["Développement"] = new[] { "Visual Studio", "VS Code", "Git", "Docker", "Node.js", "Python", "JetBrains" },
-                ["Navigateurs"] = new[] { "Chrome", "Firefox", "Edge", "Opera", "Brave" },
-                ["Multimédia"] = new[] { "VLC", "Photoshop", "GIMP", "Audacity", "Spotify", "iTunes" },
-                ["Jeux"] = new[] { "Steam", "Epic Games", "Battle.net", "Origin", "Ubisoft" },
-                ["Bureautique"] = new[] { "Office", "LibreOffice", "Notepad++", "PDF", "Word", "Excel" },
-                ["Utilitaires"] = new[] { "WinRAR", "7-Zip", "CCleaner", "Malwarebytes", "TeamViewer" }
-            };
-
-            foreach (var category in categories)
-            {
-                if (category.Value.Any(keyword =>
-                    name.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return category.Key;
-                }
-            }
-
-            return "Autre";
-        }
-
         private List<SoftwareInfo> CleanDuplicates(List<SoftwareInfo> softwareList)
         {
             return softwareList
@@ -283,6 +264,16 @@ namespace QuickMigrate.Services
                 .Select(group => group.OrderByDescending(s => !string.IsNullOrEmpty(s.Version)).First())
                 .OrderBy(s => s.Name)
                 .ToList();
+        }
+
+        public LocalFilterService GetFilterService()
+        {
+            return _filterService;
+        }
+
+        public void Dispose()
+        {
+            // Rien à disposer pour l'instant
         }
     }
 }
