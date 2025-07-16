@@ -1,8 +1,4 @@
-﻿using LazyMigrate.Models;
-using System.Resources;
-using System.Reflection;
-
-namespace LazyMigrate.Services
+﻿namespace LazyMigrate.Services
 {
     public class LocalFilterService
     {

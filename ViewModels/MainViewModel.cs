@@ -135,7 +135,7 @@ namespace LazyMigrate.ViewModels
                 var scannedSoftware = await _scanner.ScanInstalledSoftwareAsync(_scanCancellationTokenSource.Token);
 
                 // 2. Créer le détecteur intelligent
-                var preciseDetector = new PreciseSettingsDetector(message =>
+                var preciseDetector = new SettingsDetector(message =>
                 {
                     System.Windows.Application.Current.Dispatcher.Invoke(() => {
                         ScanStatus = message;

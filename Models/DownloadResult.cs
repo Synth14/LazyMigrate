@@ -1,7 +1,4 @@
-﻿using System;
-using LazyMigrate.Models;
-
-namespace LazyMigrate.Services
+﻿namespace LazyMigrate.Services
 {
     public class DownloadResult
     {

@@ -20,3 +20,6 @@ global using System.Threading.Tasks;
 global using System.Web;
 global using System.Windows;
 global using System.Windows.Data;
+
+global using System.Resources;
+global using System.Reflection;

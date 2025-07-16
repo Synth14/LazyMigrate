@@ -1,10 +1,10 @@
 ﻿namespace LazyMigrate.Services
 {
-    public class PreciseSettingsDetector
+    public class SettingsDetector
     {
         private readonly Action<string>? _progressCallback;
 
-        public PreciseSettingsDetector(Action<string>? progressCallback = null)
+        public SettingsDetector(Action<string>? progressCallback = null)
         {
             _progressCallback = progressCallback;
         }

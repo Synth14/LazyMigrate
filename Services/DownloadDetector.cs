@@ -1,12 +1,12 @@
 ﻿
 namespace LazyMigrate.Services
 {
-    public class DynamicDownloadDetector
+    public class DownloadDetector
     {
         private readonly HttpClient _httpClient;
         private readonly Action<string>? _progressCallback;
 
-        public DynamicDownloadDetector(Action<string>? progressCallback = null)
+        public DownloadDetector(Action<string>? progressCallback = null)
         {
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent",
