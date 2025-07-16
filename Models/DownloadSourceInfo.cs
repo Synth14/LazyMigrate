@@ -1,8 +1,8 @@
 ﻿namespace LazyMigrate.Models
 {
-    public class ExportedDownloadSource
+    public class DownloadSourceInfo
     {
-        public string Type { get; set; } = "";
+        public DownloadSourceType Type { get; set; }
         public string Url { get; set; } = "";
         public bool IsOfficial { get; set; }
         public string Notes { get; set; } = "";

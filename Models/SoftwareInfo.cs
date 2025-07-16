@@ -15,6 +15,11 @@
         public long EstimatedSize { get; set; }
         public string Category { get; set; } = "Inconnu";
         public string IconPath { get; set; } = string.Empty;
+
+        public List<string> ExecutablePaths { get; set; } = new();
+        public List<DownloadSourceInfo> DownloadSources { get; set; } = new();
+
+        // Et ajoutez cette propriété si elle n'existe pas :
         public string SettingsStatus
         {
             get
@@ -58,9 +63,7 @@
         }
 
         // Métadonnées de la base de données
-        public List<string> ExecutablePaths { get; set; } = new();
         public List<SettingsPath> SettingsPaths { get; set; } = new();
-        public List<DownloadSource> DownloadSources { get; set; } = new();
 
         // Propriété calculée pour l'affichage
         public string EstimatedSizeFormatted

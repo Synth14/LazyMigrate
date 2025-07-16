@@ -31,11 +31,11 @@
                        VerticalAlignment="Center"/>
             <!-- Image par-dessus le texte -->
             <Image Source="Img\ramolossgalar.png" 
-                   Width="79" 
-                   Height="77"
-                   HorizontalAlignment="Center"
+                   Width="62" 
+                   Height="62"
+                   HorizontalAlignment="Left"
                    VerticalAlignment="Top"
-                   Margin="0,-23,0,0"/>
+                   Margin="34,-27,0,0"/>
         </Grid>
 
         <!-- Barre d'outils - ScrollViewer pour éviter le débordement -->
@@ -98,19 +98,41 @@
                             BorderBrush="#4CAF50"
                             MinWidth="100"/>
 
-                    <!-- Status avec taille flexible -->
+                    <Button Content="📥 Télécharger" 
+                            Command="{Binding DownloadCommand}"
+                            Padding="15,8"
+                            Margin="5"
+                            FontSize="13"
+                            Background="#2196F3"
+                            Foreground="White"
+                            BorderBrush="#2196F3"
+                            MinWidth="100"/>
+
+                    <!-- Status ultra-simple sans convertisseurs -->
                     <Border Background="#383838" 
                             CornerRadius="3"
                             Padding="10,5"
                             Margin="10,0"
-                            MinWidth="200"
-                            MaxWidth="300">
-                        <TextBlock Text="{Binding ScanStatus}" 
-                                   VerticalAlignment="Center"
-                                   Foreground="#CCCCCC"
-                                   FontSize="12"
-                                   TextWrapping="NoWrap"
-                                   TextTrimming="CharacterEllipsis"/>
+                            MinWidth="300"
+                            MaxWidth="400">
+                        <StackPanel>
+                            <!-- Status principal -->
+                            <TextBlock Text="{Binding ScanStatus}" 
+                                       VerticalAlignment="Center"
+                                       Foreground="#CCCCCC"
+                                       FontSize="12"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <!-- Barre de progression simple -->
+                            <ProgressBar Value="{Binding ScanProgress}" 
+                                         Height="4" 
+                                         Margin="0,4,0,0"
+                                         Background="#2D2D30"
+                                         Foreground="#2196F3"
+                                         Minimum="0"
+                                         Maximum="100"/>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
             </ScrollViewer>
