@@ -3,6 +3,7 @@
     public partial class MainViewModel : ObservableObject
     {
         private readonly SoftwareScanner _scanner;
+        private readonly SoftwareSettingsRegistry _settingsRegistry; // ← AJOUT
         private CancellationTokenSource? _scanCancellationTokenSource;
 
         [ObservableProperty]
@@ -26,6 +27,14 @@
         public MainViewModel()
         {
             _scanner = new SoftwareScanner(new Progress<ScanProgress>(OnScanProgress));
+
+            // ← AJOUT : Créer le registry des settings
+            _settingsRegistry = new SoftwareSettingsRegistry(message =>
+            {
+                Application.Current.Dispatcher.Invoke(() => {
+                    ScanStatus = message;
+                });
+            });
 
             // Écouter les changements de sélection
             SoftwareList.CollectionChanged += (s, e) =>
@@ -85,8 +94,32 @@
 
                 var scannedSoftware = await _scanner.ScanInstalledSoftwareAsync(_scanCancellationTokenSource.Token);
 
+                // ← NOUVEAU : Détecter les settings immédiatement après le scan
+                ScanStatus = "Détection des configurations...";
+
                 foreach (var software in scannedSoftware)
                 {
+                    // Détecter les settings pour chaque logiciel
+                    try
+                    {
+                        var settingsFiles = await _settingsRegistry.DetectSettingsAsync(software);
+                        software.SettingsPaths = settingsFiles.Select(sf => new SettingsPath
+                        {
+                            Path = sf.FullPath,
+                            Description = $"Settings - {sf.FileType}",
+                            IsDirectory = sf.IsDirectory
+                        }).ToList();
+
+                        // Auto-cocher IncludeSettings si des settings sont trouvés
+                        software.IncludeSettings = software.SettingsPaths.Any();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Erreur détection settings pour {software.Name}: {ex.Message}");
+                        software.SettingsPaths = new List<SettingsPath>();
+                        software.IncludeSettings = false;
+                    }
+
                     SoftwareList.Add(software);
                 }
 
@@ -123,7 +156,7 @@
             foreach (var software in SoftwareList)
             {
                 software.IsSelected = true;
-                software.IncludeSettings = true; // Par défaut, inclure les settings
+                software.IncludeSettings = true;
             }
         }
 
@@ -163,11 +196,13 @@
                 {
                     await ExportToFileAsync(selectedSoftware, saveFileDialog.FileName);
 
+                    var settingsCount = selectedSoftware.Count(s => s.IncludeSettings && s.SettingsPaths.Any());
+
                     MessageBox.Show(
                         $"Export réussi !\n\n" +
                         $"Fichier: {saveFileDialog.FileName}\n" +
                         $"Logiciels exportés: {selectedSoftware.Count}\n" +
-                        $"Avec settings: {selectedSoftware.Count(s => s.IncludeSettings)}",
+                        $"Avec settings détectés: {settingsCount}",
                         "Export terminé",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
@@ -192,7 +227,6 @@
                 Software = new List<ExportedSoftware>()
             };
 
-            // Traiter chaque logiciel séparément pour éviter les problèmes avec async dans Select
             foreach (var software in selectedSoftware)
             {
                 var settingsPaths = await GetSettingsPathsAsync(software);
@@ -234,51 +268,11 @@
 
         private async Task<List<string>> GetSettingsPathsAsync(SoftwareInfo software)
         {
-            await Task.Delay(1); // Pour éviter le warning async
+            await Task.CompletedTask; 
 
             if (!software.IncludeSettings) return new List<string>();
 
-            var settingsPaths = new List<string>();
-
-            try
-            {
-                // Ajouter les chemins détectés par le scanner s'ils existent
-                if (software.SettingsPaths.Any())
-                {
-                    settingsPaths.AddRange(software.SettingsPaths.Select(sp => sp.Path));
-                }
-                else
-                {
-                    // Patterns génériques basés sur le nom du logiciel
-                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    var localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-                    var cleanName = software.Name.Replace(" ", "").Replace(".", "");
-                    var possiblePaths = new[]
-                    {
-                        Path.Combine(appDataPath, software.Name),
-                        Path.Combine(appDataPath, cleanName),
-                        Path.Combine(localAppDataPath, software.Name),
-                        Path.Combine(localAppDataPath, cleanName),
-                        Path.Combine(documentsPath, software.Name)
-                    };
-
-                    foreach (var path in possiblePaths)
-                    {
-                        if (Directory.Exists(path) || File.Exists(path))
-                        {
-                            settingsPaths.Add(path);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erreur détection settings pour {software.Name}: {ex.Message}");
-            }
-
-            return settingsPaths;
+            return software.SettingsPaths.Select(sp => sp.Path).ToList();
         }
     }
 }
