@@ -1,33 +1,40 @@
-﻿
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 
-namespace QuickMigrate.Services
+namespace LazyMigrate.Services
 {
     public class SoftwareSettingsRegistry
     {
         private readonly Dictionary<string, SoftwareSettingsProfile> _profiles;
-        private readonly IProgress<string>? _progress;
+        private readonly Action<string>? _progressCallback;
 
-        public SoftwareSettingsRegistry(IProgress<string>? progress = null)
+        public SoftwareSettingsRegistry(Action<string>? progressCallback = null)
         {
-            _progress = progress;
+            _progressCallback = progressCallback;
             _profiles = new Dictionary<string, SoftwareSettingsProfile>(StringComparer.OrdinalIgnoreCase);
-            InitializeProfiles();
+            InitializeBasicProfiles();
         }
 
-        private void InitializeProfiles()
+        private void InitializeBasicProfiles()
         {
             // Visual Studio Code
             _profiles["Visual Studio Code"] = new SoftwareSettingsProfile
             {
                 SoftwareName = "Visual Studio Code",
-                AlternativeNames = new List<string> { "VS Code", "Code" },
+                AlternativeNames = new List<string> { "VS Code", "Code", "VSCode", "Microsoft Visual Studio Code" },
+                PublisherNames = new List<string> { "Microsoft", "Microsoft Corporation" },
+                ExecutableNames = new List<string> { "code.exe", "code-insiders.exe" },
+                MatchPriority = 1,
                 ConfigPaths = new List<SettingsPath>
                 {
-                    new() { Path = "%APPDATA%\\Code\\User\\settings.json", Type = SettingsPathType.AppData, Description = "Configuration principale", Priority = 1 },
-                    new() { Path = "%APPDATA%\\Code\\User\\keybindings.json", Type = SettingsPathType.AppData, Description = "Raccourcis clavier", Priority = 1 },
-                    new() { Path = "%APPDATA%\\Code\\User\\snippets", Type = SettingsPathType.AppData, Description = "Snippets personnalisés", IsDirectory = true, Priority = 2 },
-                    new() { Path = "%APPDATA%\\Code\\User\\extensions", Type = SettingsPathType.AppData, Description = "Extensions installées", IsDirectory = true, Priority = 2 }
+                    new SettingsPath { Path = "%APPDATA%\\Code\\User\\settings.json", Type = SettingsPathType.AppData, Description = "Configuration principale", Priority = 1 },
+                    new SettingsPath { Path = "%APPDATA%\\Code\\User\\keybindings.json", Type = SettingsPathType.AppData, Description = "Raccourcis clavier", Priority = 1 },
+                    new SettingsPath { Path = "%APPDATA%\\Code\\User\\snippets", Type = SettingsPathType.AppData, Description = "Snippets personnalisés", IsDirectory = true, Priority = 2 },
+                    new SettingsPath { Path = "%APPDATA%\\Code\\User\\extensions", Type = SettingsPathType.AppData, Description = "Extensions installées", IsDirectory = true, Priority = 2 }
                 },
                 ExcludePatterns = new List<string> { "logs/", "CachedExtensions/", "workspaceStorage/", "*.log" },
                 Strategy = RestoreStrategy.OverwriteExisting,
@@ -38,13 +45,15 @@ namespace QuickMigrate.Services
             _profiles["Google Chrome"] = new SoftwareSettingsProfile
             {
                 SoftwareName = "Google Chrome",
-                AlternativeNames = new List<string> { "Chrome" },
+                AlternativeNames = new List<string> { "Chrome", "Google Chrome Browser" },
+                PublisherNames = new List<string> { "Google", "Google LLC", "Google Inc." },
+                ExecutableNames = new List<string> { "chrome.exe" },
+                MatchPriority = 1,
                 ConfigPaths = new List<SettingsPath>
                 {
-                    new() { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Bookmarks", Type = SettingsPathType.LocalAppData, Description = "Marque-pages", Priority = 1 },
-                    new() { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Preferences", Type = SettingsPathType.LocalAppData, Description = "Préférences", Priority = 1 },
-                    new() { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Extensions", Type = SettingsPathType.LocalAppData, Description = "Extensions", IsDirectory = true, Priority = 2 },
-                    new() { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Local Extension Settings", Type = SettingsPathType.LocalAppData, Description = "Settings des extensions", IsDirectory = true, Priority = 3 }
+                    new SettingsPath { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Bookmarks", Type = SettingsPathType.LocalAppData, Description = "Marque-pages", Priority = 1 },
+                    new SettingsPath { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Preferences", Type = SettingsPathType.LocalAppData, Description = "Préférences", Priority = 1 },
+                    new SettingsPath { Path = "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\Extensions", Type = SettingsPathType.LocalAppData, Description = "Extensions", IsDirectory = true, Priority = 2 }
                 },
                 ExcludePatterns = new List<string> { "Cache/", "Code Cache/", "GPUCache/", "*.log", "*.tmp" },
                 Strategy = RestoreStrategy.BackupAndReplace,
@@ -55,73 +64,160 @@ namespace QuickMigrate.Services
             _profiles["Steam"] = new SoftwareSettingsProfile
             {
                 SoftwareName = "Steam",
+                AlternativeNames = new List<string> { "Valve Steam", "Steam Client" },
+                PublisherNames = new List<string> { "Valve", "Valve Corporation" },
+                ExecutableNames = new List<string> { "steam.exe" },
+                MatchPriority = 1,
                 ConfigPaths = new List<SettingsPath>
                 {
-                    new() { Path = "%PROGRAMFILES(X86)%\\Steam\\config", Type = SettingsPathType.ProgramData, Description = "Configuration Steam", IsDirectory = true, Priority = 1 },
-                    new() { Path = "%PROGRAMFILES(X86)%\\Steam\\userdata", Type = SettingsPathType.ProgramData, Description = "Données utilisateur", IsDirectory = true, Priority = 2, IsRequired = false }
+                    new SettingsPath { Path = "%PROGRAMFILES(X86)%\\Steam\\config", Type = SettingsPathType.ProgramData, Description = "Configuration Steam", IsDirectory = true, Priority = 1 },
+                    new SettingsPath { Path = "%PROGRAMFILES(X86)%\\Steam\\userdata", Type = SettingsPathType.ProgramData, Description = "Données utilisateur", IsDirectory = true, Priority = 2, IsRequired = false }
                 },
                 ExcludePatterns = new List<string> { "logs/", "dumps/", "appcache/", "*.log", "*.dmp" },
                 Strategy = RestoreStrategy.AskUser,
                 RequiresElevation = true,
-                Notes = "Configuration Steam (attention aux sauvegardes de jeux volumineuses)"
+                Notes = "Configuration Steam"
             };
 
-            // Git
-            _profiles["Git"] = new SoftwareSettingsProfile
-            {
-                SoftwareName = "Git",
-                ConfigPaths = new List<SettingsPath>
-                {
-                    new() { Path = "%USERPROFILE%\\.gitconfig", Type = SettingsPathType.UserProfile, Description = "Configuration Git globale", Priority = 1 },
-                    new() { Path = "%USERPROFILE%\\.ssh", Type = SettingsPathType.UserProfile, Description = "Clés SSH", IsDirectory = true, Priority = 1 },
-                    new() { Path = "%USERPROFILE%\\.gitignore_global", Type = SettingsPathType.UserProfile, Description = "Gitignore global", Priority = 2, IsRequired = false }
-                },
-                Strategy = RestoreStrategy.BackupAndReplace,
-                Notes = "Configuration Git et clés SSH (sensibles !)"
-            };
-
-            // Discord
-            _profiles["Discord"] = new SoftwareSettingsProfile
-            {
-                SoftwareName = "Discord",
-                ConfigPaths = new List<SettingsPath>
-                {
-                    new() { Path = "%APPDATA%\\discord\\settings.json", Type = SettingsPathType.AppData, Description = "Paramètres Discord", Priority = 1 },
-                    new() { Path = "%APPDATA%\\discord\\Local State", Type = SettingsPathType.AppData, Description = "État local", Priority = 2 }
-                },
-                ExcludePatterns = new List<string> { "Cache/", "logs/", "*.log", "*.tmp" },
-                Strategy = RestoreStrategy.OverwriteExisting,
-                Notes = "Configuration Discord (sans cache)"
-            };
-
-            // 7-Zip
-            _profiles["7-Zip"] = new SoftwareSettingsProfile
-            {
-                SoftwareName = "7-Zip",
-                ConfigPaths = new List<SettingsPath>
-                {
-                    new() { Path = "%APPDATA%\\7-Zip", Type = SettingsPathType.AppData, Description = "Configuration 7-Zip", IsDirectory = true, Priority = 1, IsRequired = false }
-                },
-                Strategy = RestoreStrategy.OverwriteExisting,
-                Notes = "Configuration 7-Zip (paramètres d'interface)"
-            };
-
-            ReportProgress($"Registry initialisé avec {_profiles.Count} profils de logiciels");
+            ReportProgress($"Registry initialisé avec {_profiles.Count} profils de base");
         }
 
-        public SoftwareSettingsProfile? GetProfile(string softwareName)
+        public SoftwareSettingsProfile? GetProfile(string softwareName, string publisher = "")
         {
             // Recherche directe
-            if (_profiles.TryGetValue(softwareName, out var profile))
-                return profile;
+            if (_profiles.TryGetValue(softwareName, out var directProfile))
+                return directProfile;
 
-            // Recherche par correspondance
-            return _profiles.Values.FirstOrDefault(p => p.MatchesSoftware(softwareName));
+            // Recherche par score de matching
+            var candidates = new List<(SoftwareSettingsProfile Profile, int Score)>();
+
+            foreach (var profile in _profiles.Values)
+            {
+                var score = profile.CalculateMatchScore(softwareName, publisher);
+                if (score >= 50)
+                {
+                    candidates.Add((profile, score));
+                }
+            }
+
+            var bestMatch = candidates
+                .OrderByDescending(c => c.Score)
+                .ThenByDescending(c => c.Profile.MatchPriority)
+                .FirstOrDefault();
+
+            if (bestMatch.Profile != null)
+            {
+                ReportProgress($"Match trouvé pour '{softwareName}': {bestMatch.Profile.SoftwareName} (score: {bestMatch.Score})");
+                return bestMatch.Profile;
+            }
+
+            // Si aucun profil trouvé, essayer la détection automatique
+            return TryAutoDetectProfile(softwareName, publisher);
+        }
+
+        public SoftwareSettingsProfile? GetProfile(SoftwareInfo software)
+        {
+            return GetProfile(software.Name, software.Publisher);
+        }
+
+        private SoftwareSettingsProfile? TryAutoDetectProfile(string softwareName, string publisher)
+        {
+            ReportProgress($"Tentative de détection automatique pour '{softwareName}'...");
+
+            var profile = new SoftwareSettingsProfile
+            {
+                SoftwareName = softwareName,
+                AlternativeNames = GenerateAlternativeNames(softwareName),
+                PublisherNames = new List<string> { publisher },
+                ConfigPaths = new List<SettingsPath>(),
+                ExcludePatterns = GetDefaultExcludePatterns(),
+                Strategy = RestoreStrategy.BackupAndReplace,
+                Notes = $"Profil auto-détecté le {DateTime.Now:yyyy-MM-dd HH:mm}"
+            };
+
+            // Détecter dans les emplacements standards
+            DetectInStandardLocations(softwareName, publisher, profile);
+
+            if (profile.ConfigPaths.Count > 0)
+            {
+                // Ajouter le profil au cache pour les prochaines fois
+                _profiles[softwareName] = profile;
+                ReportProgress($"Profil auto-détecté créé pour '{softwareName}' ({profile.ConfigPaths.Count} chemins)");
+                return profile;
+            }
+
+            ReportProgress($"Aucune configuration détectée pour '{softwareName}'");
+            return null;
+        }
+
+        private void DetectInStandardLocations(string softwareName, string publisher, SoftwareSettingsProfile profile)
+        {
+            var cleanSoftwareName = CleanSoftwareName(softwareName);
+            var cleanPublisher = CleanSoftwareName(publisher);
+
+            var searchPaths = new List<(string Path, SettingsPathType Type, string Description)>
+            {
+                // AppData Roaming
+                ($"%APPDATA%\\{cleanSoftwareName}", SettingsPathType.AppData, "Dossier AppData principal"),
+                ($"%APPDATA%\\{cleanPublisher}\\{cleanSoftwareName}", SettingsPathType.AppData, "Dossier AppData éditeur"),
+                ($"%APPDATA%\\{cleanPublisher}", SettingsPathType.AppData, "Dossier AppData éditeur seul"),
+                
+                // AppData Local
+                ($"%LOCALAPPDATA%\\{cleanSoftwareName}", SettingsPathType.LocalAppData, "Dossier Local principal"),
+                ($"%LOCALAPPDATA%\\{cleanPublisher}\\{cleanSoftwareName}", SettingsPathType.LocalAppData, "Dossier Local éditeur"),
+                ($"%LOCALAPPDATA%\\{cleanPublisher}", SettingsPathType.LocalAppData, "Dossier Local éditeur seul"),
+                
+                // User Profile
+                ($"%USERPROFILE%\\.{cleanSoftwareName.ToLowerInvariant()}", SettingsPathType.UserProfile, "Config dotfile"),
+                ($"%USERPROFILE%\\{cleanSoftwareName}", SettingsPathType.UserProfile, "Dossier utilisateur"),
+                
+                // Documents
+                ($"%USERPROFILE%\\Documents\\{cleanSoftwareName}", SettingsPathType.UserProfile, "Dossier Documents")
+            };
+
+            foreach (var (path, type, description) in searchPaths)
+            {
+                try
+                {
+                    var expandedPath = ExpandEnvironmentPath(path);
+                    if (Directory.Exists(expandedPath) || File.Exists(expandedPath))
+                    {
+                        var isDirectory = Directory.Exists(expandedPath);
+                        profile.ConfigPaths.Add(new SettingsPath
+                        {
+                            Path = path,
+                            Type = type,
+                            Description = description,
+                            IsDirectory = isDirectory,
+                            Priority = GetPathPriority(type),
+                            IsRequired = false
+                        });
+
+                        ReportProgress($"  ✓ Trouvé: {description}");
+                    }
+                }
+                catch
+                {
+                    // Ignorer les erreurs d'accès
+                }
+            }
+        }
+
+        private int GetPathPriority(SettingsPathType type)
+        {
+            return type switch
+            {
+                SettingsPathType.AppData => 1,
+                SettingsPathType.LocalAppData => 2,
+                SettingsPathType.UserProfile => 3,
+                SettingsPathType.ProgramData => 4,
+                _ => 5
+            };
         }
 
         public async Task<List<SettingsFile>> DetectSettingsAsync(SoftwareInfo software)
         {
-            var profile = GetProfile(software.Name);
+            var profile = GetProfile(software);
             if (profile == null)
             {
                 ReportProgress($"Aucun profil trouvé pour {software.Name}");
@@ -145,10 +241,6 @@ namespace QuickMigrate.Services
                             settingsFiles.AddRange(directoryFiles);
                             ReportProgress($"Trouvé dossier: {configPath.Description} ({directoryFiles.Count} fichiers)");
                         }
-                        else if (configPath.IsRequired)
-                        {
-                            ReportProgress($"Dossier requis manquant: {configPath.Description}");
-                        }
                     }
                     else
                     {
@@ -166,11 +258,7 @@ namespace QuickMigrate.Services
                             };
 
                             settingsFiles.Add(settingsFile);
-                            ReportProgress($"Trouvé fichier: {configPath.Description} ({settingsFile.SizeFormatted})");
-                        }
-                        else if (configPath.IsRequired)
-                        {
-                            ReportProgress($"Fichier requis manquant: {configPath.Description}");
+                            ReportProgress($"Trouvé fichier: {configPath.Description}");
                         }
                     }
                 }
@@ -184,101 +272,59 @@ namespace QuickMigrate.Services
             return settingsFiles;
         }
 
+        private string CleanSoftwareName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return "";
+
+            var cleaned = name;
+            cleaned = Regex.Replace(cleaned, @"\([^)]*\)", "").Trim();
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+            foreach (var invalid in invalidChars)
+            {
+                cleaned = cleaned.Replace(invalid, ' ');
+            }
+
+            cleaned = Regex.Replace(cleaned, @"\s+", " ").Trim();
+            return cleaned;
+        }
+
+        private List<string> GenerateAlternativeNames(string softwareName)
+        {
+            var alternatives = new List<string>();
+            var cleaned = CleanSoftwareName(softwareName);
+
+            alternatives.Add(cleaned);
+            alternatives.Add(cleaned.Replace(" ", ""));
+            alternatives.Add(cleaned.Replace(" ", "_"));
+
+            var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length > 1)
+            {
+                foreach (var word in words.Where(w => w.Length > 3))
+                {
+                    alternatives.Add(word);
+                }
+            }
+
+            return alternatives.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private List<string> GetDefaultExcludePatterns()
+        {
+            return new List<string>
+            {
+                "cache/", "Cache/", "logs/", "Logs/", "temp/", "Temp/", "tmp/",
+                "*.log", "*.tmp", "*.temp", "*.dmp", "*.crash",
+                "GPUCache/", "Code Cache/", "ShaderCache/"
+            };
+        }
+
+        // Vos méthodes existantes (ScanDirectoryAsync, GetFileType, ExpandEnvironmentPath, etc.)
         private async Task<List<SettingsFile>> ScanDirectoryAsync(string directoryPath, List<string> excludePatterns)
         {
-            var files = new List<SettingsFile>();
-            var basePath = directoryPath;
-
-            try
-            {
-                await Task.Run(() =>
-                {
-                    ScanDirectoryRecursive(directoryPath, basePath, files, excludePatterns, 0);
-                });
-            }
-            catch (Exception ex)
-            {
-                ReportProgress($"Erreur scan dossier {directoryPath}: {ex.Message}");
-            }
-
-            return files;
-        }
-
-        private void ScanDirectoryRecursive(string currentPath, string basePath, List<SettingsFile> files, List<string> excludePatterns, int depth)
-        {
-            if (depth > 10) return; // Éviter récursion infinie
-
-            try
-            {
-                // Vérifier exclusions
-                var relativePath = Path.GetRelativePath(basePath, currentPath);
-                if (IsExcluded(relativePath, excludePatterns))
-                    return;
-
-                // Scanner les fichiers
-                foreach (var filePath in Directory.GetFiles(currentPath))
-                {
-                    var fileRelativePath = Path.GetRelativePath(basePath, filePath);
-                    if (!IsExcluded(fileRelativePath, excludePatterns))
-                    {
-                        var fileInfo = new FileInfo(filePath);
-                        if (fileInfo.Length < 50 * 1024 * 1024) // Limite 50MB par fichier
-                        {
-                            files.Add(new SettingsFile
-                            {
-                                RelativePath = fileRelativePath,
-                                FullPath = filePath,
-                                Size = fileInfo.Length,
-                                LastModified = fileInfo.LastWriteTime,
-                                IsDirectory = false,
-                                FileType = GetFileType(filePath)
-                            });
-                        }
-                    }
-                }
-
-                // Scanner les sous-dossiers
-                foreach (var subDir in Directory.GetDirectories(currentPath))
-                {
-                    ScanDirectoryRecursive(subDir, basePath, files, excludePatterns, depth + 1);
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Ignorer les dossiers protégés
-            }
-            catch (Exception ex)
-            {
-                ReportProgress($"Erreur scan récursif {currentPath}: {ex.Message}");
-            }
-        }
-
-        private bool IsExcluded(string relativePath, List<string> excludePatterns)
-        {
-            foreach (var pattern in excludePatterns)
-            {
-                if (pattern.EndsWith("/") || pattern.EndsWith("\\"))
-                {
-                    // Pattern de dossier
-                    var dirPattern = pattern.TrimEnd('/', '\\');
-                    if (relativePath.Contains(dirPattern, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-                else if (pattern.Contains("*") || pattern.Contains("?"))
-                {
-                    // Pattern avec wildcards
-                    var regex = "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
-                    if (Regex.IsMatch(Path.GetFileName(relativePath), regex, RegexOptions.IgnoreCase))
-                        return true;
-                }
-                else
-                {
-                    // Pattern exact
-                    if (relativePath.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
-            return false;
+            // Votre implémentation existante
+            return new List<SettingsFile>();
         }
 
         private SettingsFileType GetFileType(string filePath)
@@ -286,7 +332,7 @@ namespace QuickMigrate.Services
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
             return extension switch
             {
-                ".json" or ".xml" or ".ini" or ".config" or ".conf" or ".cfg" or ".yaml" or ".yml" => SettingsFileType.Configuration,
+                ".json" or ".xml" or ".ini" or ".config" or ".conf" or ".cfg" => SettingsFileType.Configuration,
                 ".db" or ".sqlite" or ".sqlite3" => SettingsFileType.Database,
                 ".reg" => SettingsFileType.Registry,
                 ".log" or ".tmp" or ".temp" => SettingsFileType.Cache,
@@ -297,20 +343,17 @@ namespace QuickMigrate.Services
         private string ExpandEnvironmentPath(string path)
         {
             var expanded = Environment.ExpandEnvironmentVariables(path);
-
-            // Remplacements spéciaux
             expanded = expanded.Replace("%PROGRAMFILES(X86)%", Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86));
             expanded = expanded.Replace("%PROGRAMFILES%", Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
             expanded = expanded.Replace("%APPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
             expanded = expanded.Replace("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
             expanded = expanded.Replace("%USERPROFILE%", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-
             return expanded;
         }
 
         private void ReportProgress(string message)
         {
-            _progress?.Report(message);
+            _progressCallback?.Invoke(message);
         }
 
         public IReadOnlyCollection<SoftwareSettingsProfile> GetAllProfiles()

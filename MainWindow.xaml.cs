@@ -1,7 +1,7 @@
-﻿using QuickMigrate.ViewModels;
+﻿using LazyMigrate.ViewModels;
 using System.Windows;
 
-namespace QuickMigrate
+namespace LazyMigrate
 {
     public partial class MainWindow : Window
     {

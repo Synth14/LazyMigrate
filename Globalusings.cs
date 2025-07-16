@@ -1,8 +1,8 @@
 ﻿global using CommunityToolkit.Mvvm.ComponentModel;
 global using CommunityToolkit.Mvvm.Input;
 global using Microsoft.Win32;
-global using QuickMigrate.Models;
-global using QuickMigrate.Services;
+global using LazyMigrate.Models;
+global using LazyMigrate.Services;
 global using System;
 global using System.Collections.Generic;
 global using System.Collections.ObjectModel;

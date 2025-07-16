@@ -4,14 +4,24 @@
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
-		<AssemblyName>QuickMigrate</AssemblyName>
-		<RootNamespace>QuickMigrate</RootNamespace>
-		<AssemblyTitle>QuickMigrate</AssemblyTitle>
+		<AssemblyName>LazyMigrate</AssemblyName>
+		<RootNamespace>LazyMigrate</RootNamespace>
+		<AssemblyTitle>LazyMigrate</AssemblyTitle>
 		<AssemblyDescription>Migration rapide et intelligente de logiciels</AssemblyDescription>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<FileVersion>1.0.0.0</FileVersion>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="Img\ramolossgalar.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Include="Img\ramolossgalar.png">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Resource>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />

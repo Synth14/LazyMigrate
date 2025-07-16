@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickMigrate.Models
+namespace LazyMigrate.Models
 {
-    public class QuickMigrateExport
+    public class LazyMigrateExport
     {
         public DateTime ExportDate { get; set; }
         public string ComputerName { get; set; } = string.Empty;

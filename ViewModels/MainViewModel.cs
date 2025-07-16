@@ -1,4 +1,4 @@
-﻿namespace QuickMigrate.ViewModels
+﻿namespace LazyMigrate.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
@@ -151,10 +151,10 @@
 
             var saveFileDialog = new SaveFileDialog
             {
-                Title = "Sauvegarder la configuration QuickMigrate",
-                Filter = "Fichiers QuickMigrate (*.qm)|*.qm|Fichiers JSON (*.json)|*.json",
+                Title = "Sauvegarder la configuration LazyMigrate",
+                Filter = "Fichiers LazyMigrate (*.qm)|*.qm|Fichiers JSON (*.json)|*.json",
                 DefaultExt = "qm",
-                FileName = $"QuickMigrate_Backup_{DateTime.Now:yyyyMMdd_HHmmss}"
+                FileName = $"LazyMigrate_Backup_{DateTime.Now:yyyyMMdd_HHmmss}"
             };
 
             if (saveFileDialog.ShowDialog() == true)
@@ -182,7 +182,7 @@
 
         private async Task ExportToFileAsync(List<SoftwareInfo> selectedSoftware, string fileName)
         {
-            var exportData = new QuickMigrateExport
+            var exportData = new LazyMigrateExport
             {
                 ExportDate = DateTime.Now,
                 ComputerName = Environment.MachineName,

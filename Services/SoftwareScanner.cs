@@ -1,4 +1,4 @@
-﻿namespace QuickMigrate.Services
+﻿namespace LazyMigrate.Services
 {
     public class SoftwareScanner
     {

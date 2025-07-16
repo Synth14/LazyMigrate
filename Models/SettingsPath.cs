@@ -1,4 +1,4 @@
-﻿namespace QuickMigrate.Models
+﻿namespace LazyMigrate.Models
 {
 
     public class SettingsPath

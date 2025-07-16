@@ -1,8 +1,8 @@
-﻿using QuickMigrate.Models;
+﻿using LazyMigrate.Models;
 using System.Resources;
 using System.Reflection;
 
-namespace QuickMigrate.Services
+namespace LazyMigrate.Services
 {
     public class LocalFilterService
     {
@@ -23,7 +23,7 @@ namespace QuickMigrate.Services
         {
             try
             {
-                var resourceManager = new ResourceManager("QuickMigrate.SoftwareData", Assembly.GetExecutingAssembly());
+                var resourceManager = new ResourceManager("LazyMigrate.SoftwareData", Assembly.GetExecutingAssembly());
 
                 // Charger les patterns d'exclusion
                 var excludePatterns = resourceManager.GetString("ExcludePatterns");

@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace QuickMigrate.Config {
+namespace LazyMigrate.Config {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace QuickMigrate.Config {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("QuickMigrate.Config.SoftwareDate", typeof(SoftwareDate).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("LazyMigrate.Config.SoftwareDate", typeof(SoftwareDate).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

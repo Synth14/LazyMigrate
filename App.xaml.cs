@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace QuickMigrate
+namespace LazyMigrate
 {
     /// <summary>
     /// Interaction logic for App.xaml
@@ -11,7 +11,7 @@ namespace QuickMigrate
         {
             base.OnStartup(e);
 
-            // Configuration globale de QuickMigrate
+            // Configuration globale de LazyMigrate
             // Logging, culture, etc.
         }
 
