@@ -7,6 +7,7 @@
         ProgramData,
         UserProfile,
         Documents,
-        CustomPath
+        CustomPath,
+        LocalAppData
     }
 }
