@@ -15,7 +15,17 @@
         public long EstimatedSize { get; set; }
         public string Category { get; set; } = "Inconnu";
         public string IconPath { get; set; } = string.Empty;
-
+        public string SettingsStatus
+        {
+            get
+            {
+                if (SettingsPaths?.Any() == true)
+                {
+                    return $"✅ {SettingsPaths.Count}";
+                }
+                return "❌ Aucun";
+            }
+        }
         // Propriétés pour l'export
         public bool IsSelected
         {

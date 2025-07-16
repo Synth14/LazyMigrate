@@ -1,4 +1,6 @@
-﻿namespace LazyMigrate.ViewModels
+﻿using QuickMigrate.Services;
+
+namespace LazyMigrate.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
@@ -78,6 +80,7 @@
             });
         }
 
+
         [RelayCommand]
         private async Task StartScanAsync()
         {
@@ -92,39 +95,62 @@
 
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
+                // 1. Scanner les logiciels installés
                 var scannedSoftware = await _scanner.ScanInstalledSoftwareAsync(_scanCancellationTokenSource.Token);
 
-                // ← NOUVEAU : Détecter les settings immédiatement après le scan
-                ScanStatus = "Détection des configurations...";
+                // 2. Créer le détecteur intelligent
+                var preciseDetector = new PreciseSettingsDetector(message =>
+                {
+                    Application.Current.Dispatcher.Invoke(() => {
+                        ScanStatus = message;
+                    });
+                });
 
+                ScanStatus = "Détection intelligente des configurations...";
+
+                var processedCount = 0;
+                var totalSoftware = scannedSoftware.Count;
+
+                // 3. Analyser chaque logiciel avec l'IA
                 foreach (var software in scannedSoftware)
                 {
-                    // Détecter les settings pour chaque logiciel
+                    processedCount++;
+                    ScanStatus = $"Analyse {processedCount}/{totalSoftware}: {software.Name}";
+
                     try
                     {
-                        var settingsFiles = await _settingsRegistry.DetectSettingsAsync(software);
+                        // Détection intelligente des settings
+                        var settingsFiles = await preciseDetector.DetectSettingsAsync(software);
+
                         software.SettingsPaths = settingsFiles.Select(sf => new SettingsPath
                         {
                             Path = sf.FullPath,
-                            Description = $"Settings - {sf.FileType}",
-                            IsDirectory = sf.IsDirectory
+                            Description = $"{sf.FileType} - {FormatFileSize(sf.Size)}",
+                            IsDirectory = sf.IsDirectory,
+                            Type = SettingsPathType.UserData,
+                            Priority = 1
                         }).ToList();
 
-                        // Auto-cocher IncludeSettings si des settings sont trouvés
+                        // Auto-cocher si des settings sont trouvés
                         software.IncludeSettings = software.SettingsPaths.Any();
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Erreur détection settings pour {software.Name}: {ex.Message}");
+                        Console.WriteLine($"Erreur détection pour {software.Name}: {ex.Message}");
                         software.SettingsPaths = new List<SettingsPath>();
                         software.IncludeSettings = false;
                     }
 
                     SoftwareList.Add(software);
+
+                    // Petite pause pour éviter de saturer le système
+                    if (processedCount % 10 == 0)
+                        await Task.Delay(100, _scanCancellationTokenSource.Token);
                 }
 
                 TotalFound = SoftwareList.Count;
-                ScanStatus = $"Analyse terminée - {TotalFound} logiciels détectés";
+                var settingsCount = SoftwareList.Count(s => s.SettingsPaths.Any());
+                ScanStatus = $"✅ Analyse terminée - {TotalFound} logiciels, {settingsCount} avec settings détectés";
             }
             catch (OperationCanceledException)
             {
@@ -142,7 +168,12 @@
                 ScanProgress = 0;
             }
         }
-
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024:F1} KB";
+            return $"{bytes / (1024 * 1024):F1} MB";
+        }
         [RelayCommand]
         private void StopScan()
         {

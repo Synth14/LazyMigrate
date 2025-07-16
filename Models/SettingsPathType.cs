@@ -8,6 +8,7 @@
         UserProfile,
         Documents,
         CustomPath,
-        LocalAppData
+        LocalAppData,
+        UserData
     }
 }

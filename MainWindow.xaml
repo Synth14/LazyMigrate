@@ -31,11 +31,11 @@
                        VerticalAlignment="Center"/>
             <!-- Image par-dessus le texte -->
             <Image Source="Img\ramolossgalar.png" 
-                   Width="166" 
-                   Height="90"
-                   HorizontalAlignment="Left"
+                   Width="79" 
+                   Height="77"
+                   HorizontalAlignment="Center"
                    VerticalAlignment="Top"
-                   Margin="40,-42,0,0"/>
+                   Margin="0,-23,0,0"/>
         </Grid>
 
         <!-- Barre d'outils - ScrollViewer pour éviter le débordement -->
@@ -199,10 +199,36 @@
                                     Width="100"
                                     MinWidth="100"/>
 
-                <DataGridCheckBoxColumn Header="Settings" 
+                <DataGridCheckBoxColumn Header="⚙" 
                                         Binding="{Binding IncludeSettings, UpdateSourceTrigger=PropertyChanged}" 
                                         Width="40"
                                         MinWidth="40"/>
+
+                <DataGridTemplateColumn Header="Settings" Width="80" MinWidth="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}">
+                                        <Binding Path="SettingsPaths.Count"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SettingsPaths.Count}" Value="0">
+                                                <Setter Property="Text" Value="❌ Aucun"/>
+                                                <Setter Property="Foreground" Value="#FF6B6B"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                        <Setter Property="Text" Value="{Binding SettingsPaths.Count, StringFormat='✅ {0}'}"/>
+                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
 
                 <DataGridTextColumn Header="Taille" 
                                     Binding="{Binding EstimatedSizeFormatted}" 
