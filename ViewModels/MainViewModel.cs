@@ -153,7 +153,12 @@ namespace LazyMigrate.ViewModels
                 {
                     processedCount++;
                     ScanStatus = $"Analyse {processedCount}/{totalSoftware}: {software.Name}";
-
+                    try
+                    {
+                        var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SettingsDetector_Debug.txt");
+                        File.AppendAllText(debugPath, $"[MAIN] Traitement: {software.Name} (Publisher: {software.Publisher})\n");
+                    }
+                    catch { }
                     try
                     {
                         // Détection intelligente des settings

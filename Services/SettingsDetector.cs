@@ -3,12 +3,86 @@
     public class SettingsDetector
     {
         private readonly Action<string>? _progressCallback;
+        private readonly string _logFilePath;
 
         public SettingsDetector(Action<string>? progressCallback = null)
         {
             _progressCallback = progressCallback;
+            _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SettingsDetector_Debug.txt");
+
+            // Initialiser le fichier de log
+            try
+            {
+                var initMessage = $"=== DEBUG SETTINGS DETECTOR - {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n";
+                initMessage += $"Chemin du fichier log: {_logFilePath}\n";
+                initMessage += $"Dossier de base: {AppDomain.CurrentDomain.BaseDirectory}\n\n";
+
+                File.WriteAllText(_logFilePath, initMessage);
+
+                // Test d'écriture immédiat
+                LogDebug("✅ SettingsDetector initialisé - fichier de log créé");
+            }
+            catch (Exception ex)
+            {
+                // Essayer un chemin alternatif si le premier échoue
+                try
+                {
+                    _logFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "SettingsDetector_Debug.txt");
+                    File.WriteAllText(_logFilePath, $"=== DEBUG SETTINGS DETECTOR (Desktop) - {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\nErreur chemin original: {ex.Message}\n\n");
+                    LogDebug("✅ SettingsDetector initialisé - fichier de log créé sur Desktop");
+                }
+                catch
+                {
+                    // Si même le Desktop échoue, utiliser un chemin temp
+                    _logFilePath = Path.Combine(Path.GetTempPath(), "SettingsDetector_Debug.txt");
+                }
+            }
         }
 
+        private void LogDebug(string message)
+        {
+            try
+            {
+                var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+                var logMessage = $"[{timestamp}] {message}\n";
+                File.AppendAllText(_logFilePath, logMessage);
+
+                // Aussi afficher dans l'interface si possible
+                _progressCallback?.Invoke(message);
+            }
+            catch { }
+        }
+        private string ExpandWildcardPath(string pathPattern)
+        {
+            if (!pathPattern.Contains("*"))
+                return ExpandEnvironmentPath(pathPattern);
+
+            // Séparer le chemin avant et après le *
+            var parts = pathPattern.Split('*');
+            if (parts.Length != 2) return ExpandEnvironmentPath(pathPattern);
+
+            var basePath = ExpandEnvironmentPath(parts[0].TrimEnd('\\'));
+            var endPath = parts[1].TrimStart('\\');
+
+            var expandedPaths = new List<string>();
+
+            try
+            {
+                if (Directory.Exists(basePath))
+                {
+                    // Lister tous les sous-dossiers
+                    var subDirs = Directory.GetDirectories(basePath);
+                    foreach (var subDir in subDirs)
+                    {
+                        var fullPath = Path.Combine(subDir, endPath);
+                        expandedPaths.Add(fullPath);
+                    }
+                }
+            }
+            catch { }
+
+            return expandedPaths.FirstOrDefault() ?? ExpandEnvironmentPath(pathPattern);
+        }
         public async Task<List<SettingsFile>> DetectSettingsAsync(SoftwareInfo software)
         {
             var settingsFiles = new List<SettingsFile>();
@@ -23,6 +97,12 @@
                 var cleanNames = GenerateNameVariations(softwareName);
                 var publisherNames = GenerateNameVariations(publisher);
 
+                // DEBUG: Afficher les variations générées pour Persona 5 Tactica
+                if (softwareName.Contains("Persona", StringComparison.OrdinalIgnoreCase))
+                {
+                    _progressCallback?.Invoke($"  🔧 DEBUG Variations pour {softwareName}: {string.Join(", ", cleanNames.Take(10))}");
+                }
+
                 // 2. Construire tous les chemins possibles à tester
                 var searchPaths = new List<string>();
 
@@ -32,6 +112,14 @@
                 searchPaths.AddRange(GenerateDocumentsPaths(cleanNames, publisherNames));
                 searchPaths.AddRange(GenerateProgramFilesPaths(software.InstallPath, cleanNames));
                 searchPaths.AddRange(GenerateSpecializedPaths(software, cleanNames));
+                searchPaths.AddRange(GenerateKnownPublisherPaths(cleanNames, software));
+
+                // DEBUG: Afficher quelques chemins SEGA/P5T pour Persona
+                if (softwareName.Contains("Persona", StringComparison.OrdinalIgnoreCase))
+                {
+                    var segaPaths = searchPaths.Where(p => p.Contains("SEGA") || p.Contains("P5T")).Take(5);
+                    _progressCallback?.Invoke($"  🔧 DEBUG Chemins SEGA: {string.Join(" | ", segaPaths)}");
+                }
 
                 // 3. Tester tous les chemins
                 var foundPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -40,7 +128,17 @@
                 {
                     try
                     {
-                        var expandedPath = ExpandEnvironmentPath(pathPattern);
+                        if(softwareName.Contains("Persona"))
+                        File.AppendAllText(_logFilePath, pathPattern);
+
+                        //var expandedPath = ExpandEnvironmentPath(pathPattern);
+                        var expandedPath = ExpandWildcardPath(pathPattern); // Au lieu de ExpandEnvironmentPath
+                        // DEBUG: Tester spécifiquement les chemins SEGA pour Persona
+                        if (softwareName.Contains("Persona", StringComparison.OrdinalIgnoreCase) &&
+                            (pathPattern.Contains("SEGA") || pathPattern.Contains("P5T")))
+                        {
+                            _progressCallback?.Invoke($"  🔧 DEBUG Test: {expandedPath} - Existe: {Directory.Exists(expandedPath)}");
+                        }
 
                         if (Directory.Exists(expandedPath))
                         {
@@ -216,9 +314,160 @@
                 }
             }
 
+            // Générer des abréviations intelligentes
+            var abbreviations = GenerateSmartAbbreviations(withoutSpecialChars);
+            foreach (var abbrev in abbreviations)
+            {
+                variations.Add(abbrev);
+            }
+
             return variations.Where(v => !string.IsNullOrEmpty(v) && v.Length > 1)
                            .Distinct(StringComparer.OrdinalIgnoreCase)
                            .ToList();
+        }
+
+        private List<string> GenerateSmartAbbreviations(string name)
+        {
+            var abbreviations = new List<string>();
+            if (string.IsNullOrEmpty(name)) return abbreviations;
+
+            var words = name.Split(new[] { ' ', '-', '_', '.' }, StringSplitOptions.RemoveEmptyEntries)
+                           .Where(w => w.Length > 0)
+                           .ToList();
+
+            if (words.Count < 2) return abbreviations;
+
+            // 1. Initiales simples (première lettre de chaque mot)
+            var initials = string.Join("", words.Select(w => w[0]));
+            if (initials.Length >= 2 && initials.Length <= 6)
+            {
+                abbreviations.Add(initials.ToUpperInvariant());
+                abbreviations.Add(initials.ToLowerInvariant());
+            }
+
+            // 2. Abréviations avec chiffres préservés
+            var initialsWithNumbers = "";
+            foreach (var word in words)
+            {
+                if (word.All(char.IsDigit))
+                {
+                    // Si c'est un nombre, le garder entier
+                    initialsWithNumbers += word;
+                }
+                else
+                {
+                    // Sinon, prendre la première lettre
+                    initialsWithNumbers += word[0];
+                }
+            }
+            if (initialsWithNumbers != initials && initialsWithNumbers.Length >= 2)
+            {
+                abbreviations.Add(initialsWithNumbers.ToUpperInvariant());
+                abbreviations.Add(initialsWithNumbers.ToLowerInvariant());
+            }
+
+            // 3. Patterns spécifiques pour les jeux
+            // Exemple: "Persona 5 Tactica" → "P5T"
+            if (words.Count >= 3)
+            {
+                var specialPattern = "";
+                for (int i = 0; i < words.Count; i++)
+                {
+                    var word = words[i];
+                    if (word.All(char.IsDigit))
+                    {
+                        specialPattern += word; // Garder les chiffres
+                    }
+                    else if (word.All(char.IsLetter))
+                    {
+                        specialPattern += word[0]; // Première lettre
+                    }
+                }
+                if (specialPattern.Length >= 2 && specialPattern != initials && specialPattern != initialsWithNumbers)
+                {
+                    abbreviations.Add(specialPattern.ToUpperInvariant());
+                    abbreviations.Add(specialPattern.ToLowerInvariant());
+                }
+            }
+
+            // 4. Abréviations courantes de mots
+            var commonAbbreviations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Persona"] = "P",
+                ["Final Fantasy"] = "FF",
+                ["Grand Theft Auto"] = "GTA",
+                ["Call of Duty"] = "COD",
+                ["Battlefield"] = "BF",
+                ["Counter Strike"] = "CS",
+                ["World of Warcraft"] = "WOW",
+                ["League of Legends"] = "LoL",
+                ["Defense of the Ancients"] = "DOTA",
+                ["Player Unknown"] = "PU",
+                ["Battlegrounds"] = "BG",
+                ["Total War"] = "TW",
+                ["Command and Conquer"] = "CNC",
+                ["Age of Empires"] = "AOE",
+                ["Civilization"] = "CIV",
+                ["Street Fighter"] = "SF",
+                ["Mortal Kombat"] = "MK",
+                ["Assassin's Creed"] = "AC",
+                ["Mass Effect"] = "ME",
+                ["Elder Scrolls"] = "ES",
+                ["Fallout New Vegas"] = "FNV",
+                ["Red Dead Redemption"] = "RDR",
+                ["Grand Strategy"] = "GS"
+            };
+
+            var nameUpper = name.ToUpperInvariant();
+            foreach (var abbrev in commonAbbreviations)
+            {
+                if (nameUpper.Contains(abbrev.Key.ToUpperInvariant()))
+                {
+                    var abbreviated = nameUpper.Replace(abbrev.Key.ToUpperInvariant(), abbrev.Value);
+                    // Nettoyer les espaces multiples
+                    abbreviated = Regex.Replace(abbreviated, @"\s+", " ").Trim();
+                    if (abbreviated.Length >= 2)
+                    {
+                        abbreviations.Add(abbreviated);
+                        abbreviations.Add(abbreviated.ToLowerInvariant());
+                    }
+                }
+            }
+
+            // 5. Combinaisons première lettre + nombre + dernière lettre
+            if (words.Count >= 3)
+            {
+                var hasNumber = words.Any(w => w.Any(char.IsDigit));
+                if (hasNumber)
+                {
+                    var pattern = "";
+                    pattern += words[0][0]; // Première lettre du premier mot
+
+                    // Ajouter tous les chiffres trouvés
+                    foreach (var word in words)
+                    {
+                        if (word.All(char.IsDigit))
+                        {
+                            pattern += word;
+                        }
+                        else
+                        {
+                            var digits = new string(word.Where(char.IsDigit).ToArray());
+                            if (digits.Length > 0) pattern += digits;
+                        }
+                    }
+
+                    pattern += words.Last()[0]; // Première lettre du dernier mot
+
+                    if (pattern.Length >= 2)
+                    {
+                        abbreviations.Add(pattern.ToUpperInvariant());
+                        abbreviations.Add(pattern.ToLowerInvariant());
+                    }
+                }
+            }
+
+            return abbreviations.Distinct().ToList();
         }
 
         private List<string> GenerateAppDataPaths(List<string> cleanNames, List<string> publisherNames)
@@ -235,20 +484,118 @@
                 paths.Add($@"%APPDATA%\{name}\preferences");
                 paths.Add($@"%APPDATA%\{name}\data");
                 paths.Add($@"%APPDATA%\{name}\saves");
+                paths.Add($@"%APPDATA%\{name}\Save");
+                paths.Add($@"%APPDATA%\{name}\SaveGames");
+                paths.Add($@"%APPDATA%\{name}\Saved");
 
-                // Avec éditeur
+                // Patterns avec éditeurs/publishers
                 foreach (var publisher in publisherNames.Take(3))
                 {
                     paths.Add($@"%APPDATA%\{publisher}\{name}");
                     paths.Add($@"%APPDATA%\{publisher}\{name}\config");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Save");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\saves");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Steam");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Steam\*\Save");
                     paths.Add($@"%APPDATA%\{publisher}");
                 }
+
+                // Patterns spécifiques SEGA (observé avec Persona 5 Tactica)
+                paths.Add($@"%APPDATA%\SEGA\{name}");
+                paths.Add($@"%APPDATA%\SEGA\{name}\Steam");
+                paths.Add($@"%APPDATA%\SEGA\{name}\Steam\*\Save");
+
+                // Patterns avec identifiants utilisateur Steam/Epic
+                paths.Add($@"%APPDATA%\{name}\Steam\*\Save");
+                paths.Add($@"%APPDATA%\{name}\Epic\*\Save");
+                paths.Add($@"%APPDATA%\{name}\*\Save");
+                paths.Add($@"%APPDATA%\{name}\*\saves");
 
                 // Fichiers de config directs
                 var configExts = new[] { ".conf", ".config", ".ini", ".json", ".xml", ".cfg", ".yaml", ".yml" };
                 foreach (var ext in configExts)
                 {
                     paths.Add($@"%APPDATA%\{name}{ext}");
+                }
+            }
+
+            return paths;
+        }
+
+        private List<string> GenerateKnownPublisherPaths(List<string> cleanNames, SoftwareInfo software)
+        {
+            var paths = new List<string>();
+
+            // Publishers connus et leurs patterns typiques
+            var knownPublishers = new Dictionary<string, string[]>
+            {
+                ["SEGA"] = new[] { "SEGA" },
+                ["Ubisoft"] = new[] { "Ubisoft", "Ubisoft Connect" },
+                ["Epic Games"] = new[] { "Epic", "Epic Games", "EpicGames" },
+                ["Electronic Arts"] = new[] { "EA", "Electronic Arts", "EA Games" },
+                ["Activision"] = new[] { "Activision", "Activision Blizzard" },
+                ["Bethesda"] = new[] { "Bethesda", "Bethesda Softworks" },
+                ["2K"] = new[] { "2K", "2K Games" },
+                ["Rockstar"] = new[] { "Rockstar", "Rockstar Games" },
+                ["Square Enix"] = new[] { "Square Enix", "SquareEnix" },
+                ["Capcom"] = new[] { "Capcom" },
+                ["Konami"] = new[] { "Konami" },
+                ["Bandai Namco"] = new[] { "Bandai", "Namco", "Bandai Namco" }
+            };
+
+            // Déterminer le publisher probable
+            var softwarePublisher = software.Publisher?.ToLowerInvariant() ?? "";
+            var softwareName = software.Name?.ToLowerInvariant() ?? "";
+
+            var detectedPublishers = new List<string>();
+
+            foreach (var kvp in knownPublishers)
+            {
+                var publisherKey = kvp.Key.ToLowerInvariant();
+                var variants = kvp.Value;
+
+                // Vérifier si le publisher est mentionné dans le logiciel
+                if (softwarePublisher.Contains(publisherKey) ||
+                    softwareName.Contains(publisherKey) ||
+                    variants.Any(v => softwarePublisher.Contains(v.ToLowerInvariant()) || softwareName.Contains(v.ToLowerInvariant())))
+                {
+                    detectedPublishers.AddRange(variants);
+                }
+            }
+
+            // Si aucun publisher détecté, ajouter les plus courants
+            if (!detectedPublishers.Any())
+            {
+                detectedPublishers.AddRange(new[] { "SEGA", "Ubisoft", "EA", "Epic Games" });
+            }
+
+            // Générer les patterns pour chaque publisher détecté
+            foreach (var publisher in detectedPublishers.Take(3))
+            {
+                foreach (var name in cleanNames.Take(3))
+                {
+                    // AppData patterns avec publishers
+                    paths.Add($@"%APPDATA%\{publisher}\{name}");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Steam");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Steam\*\Save");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Epic");
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Epic\*\Save");
+
+                    // LocalAppData patterns avec publishers
+                    paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}");
+                    paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}\Saved");
+                    paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}\Saved\SaveGames");
+
+                    // Patterns Ubisoft Connect spécifiques
+                    if (publisher.Contains("Ubisoft"))
+                    {
+                        paths.Add($@"%LOCALAPPDATA%\Ubisoft Game Launcher\savegames\*\*");
+                        paths.Add($@"%PROGRAMFILES(X86)%\Ubisoft\Ubisoft Game Launcher\savegames\*\*");
+                    }
+
+                    // Patterns Steam avec publishers
+                    paths.Add($@"%APPDATA%\{publisher}\{name}\Steam\*");
+                    paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}\Steam\*");
                 }
             }
 
@@ -268,20 +615,45 @@
                 paths.Add($@"%LOCALAPPDATA%\{name}\config");
                 paths.Add($@"%LOCALAPPDATA%\{name}\settings");
 
+                // Patterns Unreal Engine (observés avec Warhammer Boltgun, The Sinking City)
+                paths.Add($@"%LOCALAPPDATA%\{name}\Saved");
+                paths.Add($@"%LOCALAPPDATA%\{name}\Saved\SaveGames");
+                paths.Add($@"%LOCALAPPDATA%\{name}\Saved\SaveGames\*");
+                paths.Add($@"%LOCALAPPDATA%\{name}Game\Saved");
+                paths.Add($@"%LOCALAPPDATA%\{name}Game\Saved\SaveGames");
+                paths.Add($@"%LOCALAPPDATA%\{name}Game\Saved\SaveGames\*");
+
+                // Patterns avec suffixes de jeux
+                var gameSuffixes = new[] { "Game", "The Game", "" };
+                foreach (var suffix in gameSuffixes)
+                {
+                    var nameWithSuffix = string.IsNullOrEmpty(suffix) ? name : $"{name}{suffix}";
+                    paths.Add($@"%LOCALAPPDATA%\{nameWithSuffix}\Saved\SaveGames");
+                    paths.Add($@"%LOCALAPPDATA%\{nameWithSuffix}\Saved\Config");
+                    paths.Add($@"%LOCALAPPDATA%\{nameWithSuffix}\Saved\Logs");
+                }
+
                 // Patterns navigateurs/applications modernes
                 paths.Add($@"%LOCALAPPDATA%\{name}\User Data\Default");
                 paths.Add($@"%LOCALAPPDATA%\{name}\Profiles");
 
-                // Avec éditeur
+                // Avec éditeur/publisher
                 foreach (var publisher in publisherNames.Take(3))
                 {
                     paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}");
+                    paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}\Saved");
+                    paths.Add($@"%LOCALAPPDATA%\{publisher}\{name}\Saved\SaveGames");
                     paths.Add($@"%LOCALAPPDATA%\{publisher}");
                 }
 
                 // Packages Windows Store
                 paths.Add($@"%LOCALAPPDATA%\Packages\{name}");
                 paths.Add($@"%LOCALAPPDATA%\Packages\*{name}*\LocalState");
+
+                // Patterns avec identifiants utilisateur
+                paths.Add($@"%LOCALAPPDATA%\{name}\*\SaveGames");
+                paths.Add($@"%LOCALAPPDATA%\{name}\*\Save");
+                paths.Add($@"%LOCALAPPDATA%\{name}\*\saves");
             }
 
             return paths;
@@ -480,7 +852,9 @@
             {
                 await Task.Run(() =>
                 {
-                    ScanDirectoryRecursive(directoryPath, settingsFiles, softwareName, 0, 2);
+                    // Profondeur augmentée pour les jeux avec des structures complexes
+                    var maxDepth = directoryPath.ToLowerInvariant().Contains("save") ? 4 : 2;
+                    ScanDirectoryRecursive(directoryPath, settingsFiles, softwareName, 0, maxDepth);
                 });
             }
             catch
@@ -531,7 +905,7 @@
                 {
                     var subdirs = Directory.GetDirectories(directoryPath)
                                           .Where(d => ShouldScanSubdirectory(d, softwareName))
-                                          .Take(5);
+                                          .Take(10); // Augmenté pour capturer plus de sous-dossiers
 
                     foreach (var subdir in subdirs)
                     {
@@ -549,19 +923,65 @@
         {
             var dirName = Path.GetFileName(directoryPath).ToLowerInvariant();
             var softwareLower = softwareName.ToLowerInvariant();
+            var parentPath = Path.GetDirectoryName(directoryPath)?.ToLowerInvariant() ?? "";
 
             // Dossiers à scanner
-            var importantDirs = new[] { "config", "settings", "user", "data", "saves", "profiles", "preferences", "default" };
+            var importantDirs = new[] {
+                "config", "settings", "user", "data", "saves", "save", "savegames",
+                "profiles", "preferences", "default", "saved", "steam", "epic"
+            };
             if (importantDirs.Any(important => dirName.Contains(important))) return true;
 
             // Scanner si le nom du dossier ressemble au logiciel
             if (dirName.Contains(softwareLower.Replace(" ", ""))) return true;
 
+            // Scanner les dossiers qui ressemblent à des IDs utilisateur (Steam, Epic, etc.)
+            if (IsUserIdDirectory(dirName)) return true;
+
+            // Scanner les dossiers numériques dans les dossiers de sauvegarde (ex: 100, 200, 300)
+            if (parentPath.Contains("save") || parentPath.Contains("savegame"))
+            {
+                if (dirName.All(char.IsDigit) && dirName.Length >= 1 && dirName.Length <= 5)
+                {
+                    return true;
+                }
+            }
+
+            // Scanner les dossiers avec des noms courts dans les contextes de jeux
+            if (dirName.Length <= 4 && dirName.All(c => char.IsLetterOrDigit(c)))
+            {
+                // Dans des contextes de jeux (SEGA, Steam, etc.)
+                if (parentPath.Contains("sega") || parentPath.Contains("steam") ||
+                    parentPath.Contains("epic") || parentPath.Contains("save"))
+                {
+                    return true;
+                }
+            }
+
             // Éviter les dossiers volumineux
-            var avoidDirs = new[] { "cache", "temp", "log", "crash", "backup", "update" };
+            var avoidDirs = new[] { "cache", "temp", "log", "crash", "backup", "update", "installer" };
             if (avoidDirs.Any(avoid => dirName.Contains(avoid))) return false;
 
             return true;
+        }
+
+        private bool IsUserIdDirectory(string directoryName)
+        {
+            // Vérifier si c'est un ID utilisateur (Steam = 17 chiffres, Epic = format spécifique)
+            if (directoryName.All(char.IsDigit))
+            {
+                // Steam ID (17 chiffres), ou autres IDs numériques courts
+                return directoryName.Length >= 8 && directoryName.Length <= 20;
+            }
+
+            // GUID ou ID alphanumériques
+            if (directoryName.Length >= 8 && directoryName.Length <= 40)
+            {
+                var alphaNumericCount = directoryName.Count(c => char.IsLetterOrDigit(c) || c == '-');
+                return alphaNumericCount == directoryName.Length;
+            }
+
+            return false;
         }
 
         private async Task<List<SettingsFile>> ScanRegistryForSettings(List<string> cleanNames, List<string> publisherNames)
@@ -797,6 +1217,13 @@
 
             if (configExtensions.Contains(extension)) return true;
 
+            // Extensions de sauvegarde de jeux
+            var saveExtensions = new[] {
+                ".sav", ".save", ".dat", ".bin", ".gam", ".sg", ".slot", ".usr", ".pro", ".profile"
+            };
+
+            if (saveExtensions.Contains(extension)) return true;
+
             // Noms de fichiers typiques
             var configNames = new[] {
                 "settings", "preferences", "config", "options", "user", "profile",
@@ -805,8 +1232,34 @@
 
             if (configNames.Any(name => fileName.Contains(name))) return true;
 
+            // Fichiers de sauvegarde typiques (sans extension ou avec extensions inhabituelles)
+            var saveNames = new[] {
+                "save", "savegame", "savedata", "gamesave", "slot", "checkpoint", "progress", "game"
+            };
+
+            if (saveNames.Any(name => fileName.Contains(name))) return true;
+
             // Fichiers spécifiques au logiciel
             if (fileName.Contains(softwareLower.Replace(" ", ""))) return true;
+
+            // Fichiers dans des dossiers de sauvegarde (même sans extension évidente)
+            var directoryPath = Path.GetDirectoryName(filePath)?.ToLowerInvariant() ?? "";
+            if (directoryPath.Contains("save") || directoryPath.Contains("savegame") || directoryPath.Contains("saves"))
+            {
+                // Dans un dossier de sauvegarde, accepter plus de types de fichiers
+                if (extension == "" || // Fichiers sans extension
+                    extension == ".tmp" || // Fichiers temporaires de sauvegarde
+                    fileName.All(c => char.IsDigit(c) || c == '.')) // Fichiers avec noms numériques
+                {
+                    return true;
+                }
+            }
+
+            // Fichiers avec des noms numériques dans des dossiers de sauvegarde (ex: 100, 200, 300)
+            if (fileName.All(char.IsDigit) && fileName.Length >= 1 && fileName.Length <= 5)
+            {
+                return true;
+            }
 
             return false;
         }
