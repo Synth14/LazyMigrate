@@ -137,7 +137,8 @@ namespace LazyMigrate.ViewModels
                 // 2. Créer le détecteur intelligent
                 var preciseDetector = new SettingsDetector(message =>
                 {
-                    System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
                         ScanStatus = message;
                     });
                 });

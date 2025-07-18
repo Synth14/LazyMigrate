@@ -248,16 +248,33 @@
                 paths.Add($@"%USERPROFILE%\Documents\{name}");
                 paths.Add($@"%USERPROFILE%\Documents\My {name}");
 
-                // Saves de jeux
+                // My Games - dossier standard pour les sauvegardes de jeux
+                paths.Add($@"%USERPROFILE%\Documents\My Games\{name}");
+                paths.Add($@"%USERPROFILE%\Documents\My Games\{name}\Saves");
+                paths.Add($@"%USERPROFILE%\Documents\My Games\{name}\SaveGames");
+                paths.Add($@"%USERPROFILE%\Documents\My Games\{name}\Config");
+                paths.Add($@"%USERPROFILE%\Documents\My Games\{name}\Settings");
+
+                // Saved Games (dossier Windows Vista+)
+                paths.Add($@"%USERPROFILE%\Saved Games\{name}");
+                paths.Add($@"%USERPROFILE%\Saved Games\{name}\Saves");
+                paths.Add($@"%USERPROFILE%\Saved Games\{name}\Profiles");
+
+                // Autres patterns de sauvegardes
                 paths.Add($@"%USERPROFILE%\Documents\{name}\Saves");
                 paths.Add($@"%USERPROFILE%\Documents\{name}\SaveGames");
-                paths.Add($@"%USERPROFILE%\Saved Games\{name}");
+                paths.Add($@"%USERPROFILE%\Documents\{name}\Profiles");
+                paths.Add($@"%USERPROFILE%\Documents\{name}\Config");
+                paths.Add($@"%USERPROFILE%\Documents\{name}\Settings");
+                paths.Add($@"%USERPROFILE%\Documents\{name}\Data");
 
                 // Avec éditeur
                 foreach (var publisher in publisherNames.Take(2))
                 {
                     paths.Add($@"%USERPROFILE%\Documents\{publisher}\{name}");
                     paths.Add($@"%USERPROFILE%\Documents\{publisher}");
+                    paths.Add($@"%USERPROFILE%\Documents\My Games\{publisher}\{name}");
+                    paths.Add($@"%USERPROFILE%\Saved Games\{publisher}\{name}");
                 }
             }
 
@@ -300,14 +317,37 @@
             if (name.Contains("steam") || category.Contains("jeu"))
             {
                 paths.Add(@"%PROGRAMFILES(X86)%\Steam\userdata");
-                foreach (var cleanName in cleanNames.Take(2))
+                paths.Add(@"%PROGRAMFILES%\Steam\userdata");
+            }
+
+            // Détection heuristique de jeux (sans dépendre de la catégorie)
+            var gameIndicators = new[] { "game", "games", "play", "studio", "entertainment", "interactive" };
+            var isLikelyGame = gameIndicators.Any(indicator => name.Contains(indicator)) ||
+                             category.Contains("jeu") || category.Contains("game");
+
+            if (isLikelyGame)
+            {
+                foreach (var cleanName in cleanNames.Take(3))
                 {
+                    // Emplacements courants pour les jeux
+                    paths.Add($@"%USERPROFILE%\Documents\My Games\{cleanName}");
+                    paths.Add($@"%USERPROFILE%\Saved Games\{cleanName}");
+                    paths.Add($@"%APPDATA%\{cleanName}\Saves");
+                    paths.Add($@"%LOCALAPPDATA%\{cleanName}\Saved Games");
+
+                    // Epic Games Store
+                    paths.Add($@"%LOCALAPPDATA%\EpicGamesLauncher\Saved\SaveGames");
+
+                    // Origin
+                    paths.Add($@"%USERPROFILE%\Documents\EA Games\{cleanName}");
+
+                    // Ubisoft Connect
                     paths.Add($@"%USERPROFILE%\Documents\My Games\{cleanName}");
                 }
             }
 
             // Navigateurs
-            if (name.Contains("chrome") || name.Contains("firefox") || name.Contains("edge"))
+            if (name.Contains("chrome") || name.Contains("firefox") || name.Contains("edge") || name.Contains("browser"))
             {
                 foreach (var cleanName in cleanNames.Take(2))
                 {
@@ -316,13 +356,38 @@
                 }
             }
 
-            // Développement
-            if (name.Contains("visual studio") || name.Contains("code") || name.Contains("ide"))
+            // Développement (IDE, éditeurs de code)
+            var devIndicators = new[] { "visual studio", "code", "ide", "studio", "intellij", "eclipse", "atom", "sublime" };
+            if (devIndicators.Any(indicator => name.Contains(indicator)) || category.Contains("développement"))
             {
                 foreach (var cleanName in cleanNames.Take(2))
                 {
                     paths.Add($@"%APPDATA%\{cleanName}\User");
                     paths.Add($@"%USERPROFILE%\.{cleanName.ToLowerInvariant()}");
+                    paths.Add($@"%USERPROFILE%\.config\{cleanName.ToLowerInvariant()}");
+                }
+            }
+
+            // Communication (Discord, Teams, Slack, etc.)
+            var commIndicators = new[] { "discord", "teams", "slack", "skype", "zoom", "telegram", "whatsapp" };
+            if (commIndicators.Any(indicator => name.Contains(indicator)) || category.Contains("communication"))
+            {
+                foreach (var cleanName in cleanNames.Take(2))
+                {
+                    paths.Add($@"%APPDATA%\{cleanName}");
+                    paths.Add($@"%LOCALAPPDATA%\{cleanName}");
+                }
+            }
+
+            // Multimédia (Adobe, OBS, VLC, etc.)
+            var mediaIndicators = new[] { "adobe", "photoshop", "premiere", "obs", "vlc", "media", "player", "studio" };
+            if (mediaIndicators.Any(indicator => name.Contains(indicator)) || category.Contains("multimédia"))
+            {
+                foreach (var cleanName in cleanNames.Take(2))
+                {
+                    paths.Add($@"%APPDATA%\Adobe\{cleanName}");
+                    paths.Add($@"%USERPROFILE%\Documents\Adobe\{cleanName}");
+                    paths.Add($@"%APPDATA%\{cleanName}");
                 }
             }
 
