@@ -35,7 +35,6 @@
 
                 // 3. Tester tous les chemins
                 var foundPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var totalPaths = searchPaths.Distinct().Count();
 
                 foreach (var pathPattern in searchPaths.Distinct())
                 {
@@ -77,7 +76,11 @@
                 var registrySettings = await ScanRegistryForSettings(cleanNames, publisherNames);
                 settingsFiles.AddRange(registrySettings);
 
-                // 5. Filtrer et prioriser les résultats
+                // 5. Recherche fuzzy globale dans les dossiers communs
+                var fuzzySettings = await ScanFuzzyGlobal(cleanNames, softwareName);
+                settingsFiles.AddRange(fuzzySettings);
+
+                // 6. Filtrer et prioriser les résultats
                 var filteredSettings = FilterAndPrioritizeSettings(settingsFiles, software);
 
                 var summary = GetSettingsSummary(filteredSettings);
@@ -105,42 +108,117 @@
             var withoutParens = Regex.Replace(name, @"\([^)]*\)", "").Trim();
             if (!string.IsNullOrEmpty(withoutParens)) variations.Add(withoutParens);
 
+            // Supprimer caractères spéciaux (®, ™, ©, etc.)
+            var withoutSpecialChars = Regex.Replace(withoutParens, @"[®™©→←↑↓•◆■□▲▼★☆♠♣♥♦]", "").Trim();
+            if (!string.IsNullOrEmpty(withoutSpecialChars)) variations.Add(withoutSpecialChars);
+
             // Supprimer versions et numéros
-            var withoutVersion = Regex.Replace(withoutParens, @"\s+\d+(\.\d+)*", "").Trim();
+            var withoutVersion = Regex.Replace(withoutSpecialChars, @"\s+\d+(\.\d+)*", "").Trim();
             if (!string.IsNullOrEmpty(withoutVersion)) variations.Add(withoutVersion);
 
-            // Supprimer mots courants
-            var commonWords = new[] { "Microsoft", "Google", "LLC", "Inc", "Corporation", "Corp", "Ltd", "Software", "App", "Application", "Studio", "Studios", "Games", "Team" };
-            var cleanName = withoutVersion;
+            // Convertir chiffres romains en arabes et vice versa
+            var romanToArabic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { " III", " 3" }, { " II", " 2" }, { " IV", " 4" }, { " V", " 5" },
+                { " VI", " 6" }, { " VII", " 7" }, { " VIII", " 8" }, { " IX", " 9" }, { " X", " 10" }
+            };
+
+            var arabicToRoman = romanToArabic.ToDictionary(kvp => kvp.Value, kvp => kvp.Key, StringComparer.OrdinalIgnoreCase);
+
+            var baseVariations = variations.ToList();
+            foreach (var variation in baseVariations)
+            {
+                // Convertir romain → arabe
+                foreach (var conversion in romanToArabic)
+                {
+                    if (variation.Contains(conversion.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        variations.Add(variation.Replace(conversion.Key, conversion.Value, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                // Convertir arabe → romain
+                foreach (var conversion in arabicToRoman)
+                {
+                    if (variation.Contains(conversion.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        variations.Add(variation.Replace(conversion.Key, conversion.Value, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+            }
+
+            // Supprimer mots courants de publishers/types
+            var commonWords = new[] {
+                "Microsoft", "Google", "LLC", "Inc", "Corporation", "Corp", "Ltd",
+                "Software", "App", "Application", "Studio", "Studios", "Games", "Team",
+                "Entertainment", "Interactive", "Digital", "Technologies", "Systems",
+                "Battle.net", "Steam", "Epic", "Origin", "Ubisoft", "EA", "Activision",
+                "Blizzard", "Valve", "Bethesda", "2K", "Rockstar"
+            };
+
+            var cleanName = withoutSpecialChars;
             foreach (var word in commonWords)
             {
                 cleanName = Regex.Replace(cleanName, $@"\b{Regex.Escape(word)}\b", "", RegexOptions.IgnoreCase).Trim();
             }
             if (!string.IsNullOrEmpty(cleanName)) variations.Add(cleanName);
 
-            // Générer variations de formatage
-            var baseNames = variations.ToList();
-            foreach (var baseName in baseNames)
+            // Générer variations de formatage pour chaque nom de base
+            var finalBaseNames = variations.ToList();
+            foreach (var baseName in finalBaseNames)
             {
-                if (string.IsNullOrEmpty(baseName)) continue;
+                if (string.IsNullOrEmpty(baseName) || baseName.Length <= 1) continue;
 
-                variations.Add(baseName.Replace(" ", ""));      // Sans espaces
-                variations.Add(baseName.Replace(" ", "_"));     // Avec underscores
-                variations.Add(baseName.Replace(" ", "-"));     // Avec tirets
-                variations.Add(baseName.ToLowerInvariant());    // Lowercase
+                // Sans espaces
+                variations.Add(baseName.Replace(" ", ""));
+                // Avec underscores
+                variations.Add(baseName.Replace(" ", "_"));
+                // Avec tirets
+                variations.Add(baseName.Replace(" ", "-"));
+                // Lowercase
+                variations.Add(baseName.ToLowerInvariant());
+                // Uppercase
+                variations.Add(baseName.ToUpperInvariant());
 
+                // Premier mot seulement
                 var firstWord = baseName.Split(' ').First().Trim();
                 if (firstWord.Length > 2) variations.Add(firstWord);
 
+                // Dernier mot si composé
                 var words = baseName.Split(' ');
                 if (words.Length > 1)
                 {
                     var lastWord = words.Last().Trim();
                     if (lastWord.Length > 2) variations.Add(lastWord);
                 }
+
+                // Combiner premiers et derniers mots pour les noms longs
+                if (words.Length > 2)
+                {
+                    variations.Add($"{words.First()} {words.Last()}");
+                }
             }
 
-            return variations.Where(v => !string.IsNullOrEmpty(v) && v.Length > 1).ToList();
+            // Variations spécifiques pour certains patterns
+            var allVariations = variations.ToList();
+            foreach (var variation in allVariations)
+            {
+                // Supprimer "The " au début
+                if (variation.StartsWith("The ", StringComparison.OrdinalIgnoreCase))
+                {
+                    variations.Add(variation.Substring(4));
+                }
+
+                // Ajouter "The " au début s'il n'y est pas
+                if (!variation.StartsWith("The ", StringComparison.OrdinalIgnoreCase) && variation.Length > 3)
+                {
+                    variations.Add($"The {variation}");
+                }
+            }
+
+            return variations.Where(v => !string.IsNullOrEmpty(v) && v.Length > 1)
+                           .Distinct(StringComparer.OrdinalIgnoreCase)
+                           .ToList();
         }
 
         private List<string> GenerateAppDataPaths(List<string> cleanNames, List<string> publisherNames)
@@ -538,6 +616,170 @@
             {
                 // Ignorer les erreurs d'accès
             }
+        }
+
+        private async Task<List<SettingsFile>> ScanFuzzyGlobal(List<string> cleanNames, string originalSoftwareName)
+        {
+            var settingsFiles = new List<SettingsFile>();
+
+            try
+            {
+                // Dossiers racines à scanner avec recherche fuzzy
+                var basePaths = new[]
+                {
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Saved Games"),
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                }.Where(Directory.Exists);
+
+                foreach (var basePath in basePaths)
+                {
+                    try
+                    {
+                        var directories = Directory.GetDirectories(basePath);
+
+                        foreach (var directory in directories.Take(100)) // Limiter pour éviter la lenteur
+                        {
+                            var dirName = Path.GetFileName(directory);
+
+                            // Recherche fuzzy : ce dossier correspond-il au logiciel ?
+                            if (IsFuzzyMatch(dirName, cleanNames, originalSoftwareName))
+                            {
+                                var dirFiles = await ScanDirectoryForSettings(directory, originalSoftwareName);
+                                if (dirFiles.Any())
+                                {
+                                    settingsFiles.AddRange(dirFiles);
+                                    _progressCallback?.Invoke($"  🔍 Correspondance: {Path.GetFileName(basePath)}\\{dirName}");
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignorer les erreurs d'accès aux dossiers
+                    }
+                }
+            }
+            catch
+            {
+                // Ignorer les erreurs
+            }
+
+            return settingsFiles;
+        }
+
+        private bool IsFuzzyMatch(string directoryName, List<string> cleanNames, string originalSoftwareName)
+        {
+            var dirNameLower = directoryName.ToLowerInvariant();
+            var originalLower = originalSoftwareName.ToLowerInvariant();
+
+            // 1. Correspondance exacte avec une des variations (déjà testée normalement)
+            foreach (var cleanName in cleanNames)
+            {
+                if (dirNameLower.Equals(cleanName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            // 2. Le nom du dossier contient une partie significative du logiciel
+            var significantWords = ExtractSignificantWords(originalLower);
+
+            foreach (var word in significantWords)
+            {
+                if (dirNameLower.Contains(word) && word.Length > 3)
+                    return true;
+            }
+
+            // 3. Le nom du logiciel contient le nom du dossier (ou vice versa)
+            var dirWords = ExtractSignificantWords(dirNameLower);
+            foreach (var dirWord in dirWords)
+            {
+                if (dirWord.Length > 3 && originalLower.Contains(dirWord))
+                    return true;
+            }
+
+            // 4. Recherche par similarité textuelle pour les noms courts/similaires
+            foreach (var cleanName in cleanNames.Take(3))
+            {
+                if (CalculateLevenshteinSimilarity(dirNameLower, cleanName.ToLowerInvariant()) > 0.75)
+                    return true;
+            }
+
+            // 5. Patterns spéciaux (initiales, abréviations courantes)
+            if (IsAbbreviationMatch(dirNameLower, originalLower))
+                return true;
+
+            return false;
+        }
+
+        private List<string> ExtractSignificantWords(string text)
+        {
+            // Mots à ignorer car trop génériques
+            var commonWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "game", "games", "software", "app", "application", "program", "tool", "tools",
+                "studio", "studios", "edition", "version", "the", "and", "or", "for", "with",
+                "inc", "llc", "corp", "corporation", "ltd", "limited", "co", "company"
+            };
+
+            return text.Split(new[] { ' ', '-', '_', '.', '(', ')', '[', ']' }, StringSplitOptions.RemoveEmptyEntries)
+                      .Where(word => word.Length > 2 && !commonWords.Contains(word))
+                      .Select(word => word.ToLowerInvariant())
+                      .Distinct()
+                      .ToList();
+        }
+
+        private double CalculateLevenshteinSimilarity(string text1, string text2)
+        {
+            if (string.IsNullOrEmpty(text1) || string.IsNullOrEmpty(text2))
+                return 0;
+
+            var maxLength = Math.Max(text1.Length, text2.Length);
+            if (maxLength == 0) return 1;
+
+            var distance = CalculateLevenshteinDistance(text1, text2);
+            return 1.0 - (double)distance / maxLength;
+        }
+
+        private int CalculateLevenshteinDistance(string text1, string text2)
+        {
+            var matrix = new int[text1.Length + 1, text2.Length + 1];
+
+            for (int i = 0; i <= text1.Length; i++)
+                matrix[i, 0] = i;
+
+            for (int j = 0; j <= text2.Length; j++)
+                matrix[0, j] = j;
+
+            for (int i = 1; i <= text1.Length; i++)
+            {
+                for (int j = 1; j <= text2.Length; j++)
+                {
+                    var cost = text1[i - 1] == text2[j - 1] ? 0 : 1;
+                    matrix[i, j] = Math.Min(
+                        Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                        matrix[i - 1, j - 1] + cost);
+                }
+            }
+
+            return matrix[text1.Length, text2.Length];
+        }
+
+        private bool IsAbbreviationMatch(string directoryName, string softwareName)
+        {
+            // Vérifier si le nom du dossier pourrait être une abréviation
+            if (directoryName.Length < softwareName.Length / 3) // Le dossier est beaucoup plus court
+            {
+                var softwareWords = ExtractSignificantWords(softwareName);
+                var initials = string.Join("", softwareWords.Select(w => w.FirstOrDefault()));
+
+                if (directoryName.Equals(initials, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         private bool IsSettingsFile(string filePath, string softwareName)
