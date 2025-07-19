@@ -2,6 +2,7 @@
 global using CommunityToolkit.Mvvm.Input;
 global using LazyMigrate.Models;
 global using LazyMigrate.Services;
+global using LazyMigrate.Services.Interfaces;
 global using Microsoft.Win32;
 global using System;
 global using System.Collections.Generic;
