@@ -1,4 +1,6 @@
-﻿namespace LazyMigrate.Services
+﻿using LazyMigrate.Models.Core;
+
+namespace LazyMigrate.Services
 {
     public class SmartSettingsDetector
     {

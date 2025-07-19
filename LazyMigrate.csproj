@@ -31,7 +31,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="Config\SoftwareDate.Designer.cs">
+	  <Compile Update="Resources\SoftwareDate.Designer.cs">
 	    <DesignTime>True</DesignTime>
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>SoftwareDate.resx</DependentUpon>
@@ -39,10 +39,16 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <EmbeddedResource Update="Config\SoftwareDate.resx">
+	  <EmbeddedResource Update="Resources\SoftwareDate.resx">
 	    <Generator>ResXFileCodeGenerator</Generator>
 	    <LastGenOutput>SoftwareDate.Designer.cs</LastGenOutput>
 	  </EmbeddedResource>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Services\Download\Engines\" />
+	  <Folder Include="Services\Download\Utilities\" />
+	  <Folder Include="Services\Export\" />
 	</ItemGroup>
 
 </Project>

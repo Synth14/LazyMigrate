@@ -1,4 +1,7 @@
-﻿namespace LazyMigrate.Services
+﻿using LazyMigrate.Models.Core;
+using LazyMigrate.Models.Download;
+
+namespace LazyMigrate.Services
 {
     public class SoftwareDownloader
     {

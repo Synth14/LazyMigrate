@@ -1,21 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Forms;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Win32;
-using LazyMigrate.Models;
-using LazyMigrate.Services;
-using MessageBox = System.Windows.MessageBox;
-using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
+﻿
 
 namespace LazyMigrate.ViewModels
 {
@@ -26,7 +9,7 @@ namespace LazyMigrate.ViewModels
         private CancellationTokenSource? _downloadCancellationTokenSource;
 
         #region Properties
-
+        public ObservableCollection<SoftwareWithDownload> SoftwareWithDownloads { get; set; }
         [ObservableProperty]
         private ObservableCollection<SoftwareInfo> _softwareList = new();
 
@@ -35,7 +18,7 @@ namespace LazyMigrate.ViewModels
 
         [ObservableProperty]
         private int _scanProgress = 0;
-
+        
         [ObservableProperty]
         private bool _isScanning = false;
 
@@ -461,10 +444,10 @@ namespace LazyMigrate.ViewModels
 
         private async Task ShowDownloadSummaryAsync(List<DownloadResult> results, string downloadFolder)
         {
-            var successful = results.Where(r => r.Status == Models.DownloadStatus.Success).ToList();
-            var failed = results.Where(r => r.Status == Models.DownloadStatus.Error).ToList();
-            var alreadyExists = results.Where(r => r.Status == Models.DownloadStatus.AlreadyExists).ToList();
-            var noSource = results.Where(r => r.Status == Models.DownloadStatus.NoSourceFound).ToList();
+            var successful = results.Where(r => r.Status == Models.Download.DownloadStatus.Success).ToList();
+            var failed = results.Where(r => r.Status == Models.Download.DownloadStatus.Error).ToList();
+            var alreadyExists = results.Where(r => r.Status == Models.Download.DownloadStatus.AlreadyExists).ToList();
+            var noSource = results.Where(r => r.Status == Models.Download.DownloadStatus.NoSourceFound).ToList();
 
             var totalSize = successful.Concat(alreadyExists).Sum(r => r.FileSize);
             var newDownloads = successful.Where(r => !string.IsNullOrEmpty(r.FilePath)).ToList();
