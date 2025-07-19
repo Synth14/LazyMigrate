@@ -227,15 +227,39 @@
                 }
             }
 
-            // Multimédia (Adobe, OBS, VLC, etc.)
-            var mediaIndicators = new[] { "adobe", "photoshop", "premiere", "obs", "vlc", "media", "player", "studio" };
-            if (mediaIndicators.Any(indicator => name.Contains(indicator)) || category.Contains("multimédia"))
+            // Adobe spécifique
+            var adobeIndicators = new[] { "adobe", "photoshop", "premiere", "after effects", "illustrator", "indesign", "acrobat" };
+            if (adobeIndicators.Any(indicator => name.Contains(indicator)) || category.Contains("adobe"))
             {
                 foreach (var cleanName in cleanNames.Take(2))
                 {
                     paths.Add($@"%APPDATA%\Adobe\{cleanName}");
                     paths.Add($@"%USERPROFILE%\Documents\Adobe\{cleanName}");
+                    paths.Add($@"%LOCALAPPDATA%\Adobe\{cleanName}");
+                }
+            }
+
+            // Autres multimédia (OBS, VLC, etc.)
+            var mediaIndicators = new[] { "obs", "vlc", "media", "player", "studio" };
+            if (mediaIndicators.Any(indicator => name.Contains(indicator)) || category.Contains("multimédia"))
+            {
+                foreach (var cleanName in cleanNames.Take(2))
+                {
                     paths.Add($@"%APPDATA%\{cleanName}");
+                    paths.Add($@"%LOCALAPPDATA%\{cleanName}");
+                    paths.Add($@"%USERPROFILE%\Documents\{cleanName}");
+
+                    // Patterns spécifiques multimédia
+                    if (name.Contains("obs"))
+                    {
+                        paths.Add($@"%APPDATA%\obs-studio");
+                        paths.Add($@"%APPDATA%\obs-studio\basic\profiles\*");
+                    }
+                    if (name.Contains("vlc"))
+                    {
+                        paths.Add($@"%APPDATA%\vlc");
+                        paths.Add($@"%LOCALAPPDATA%\VLC media player");
+                    }
                 }
             }
 
