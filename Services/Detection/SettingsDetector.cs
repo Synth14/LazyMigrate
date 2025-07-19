@@ -1,9 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-using LazyMigrate.Services.Detection.PathGenerators.Interfaces;
-using LazyMigrate.Services.Detection.Scanners;
-using LazyMigrate.Services.Detection.Utilities;
-
-namespace LazyMigrate.Services.Detection
+﻿namespace LazyMigrate.Services.Detection
 {
     /// <summary>
     /// Détecteur de settings refactorisé en services modulaires avec optimisations de performance
@@ -85,7 +80,7 @@ namespace LazyMigrate.Services.Detection
             catch { }
         }
 
-        public async Task<List<SettingsFile>> DetectSettingsAsync(SoftwareInfo software)
+        public async Task<List<SettingsFile>> DetectSettingsAsync(SoftwareWithDownload software)
         {
             var settingsFiles = new List<SettingsFile>();
             var softwareName = software.Name;
@@ -202,7 +197,7 @@ namespace LazyMigrate.Services.Detection
             }
         }
 
-        private List<SettingsFile> FilterAndPrioritizeSettings(List<SettingsFile> settingsFiles, SoftwareInfo software)
+        private List<SettingsFile> FilterAndPrioritizeSettings(List<SettingsFile> settingsFiles, SoftwareWithDownload software)
         {
             // Filtrer les fichiers non pertinents
             var filtered = settingsFiles.Where(sf => ShouldIncludeSettingsFile(sf)).ToList();
@@ -232,7 +227,7 @@ namespace LazyMigrate.Services.Detection
             return true;
         }
 
-        private int GetFilePriority(SettingsFile settingsFile, SoftwareInfo software)
+        private int GetFilePriority(SettingsFile settingsFile, SoftwareWithDownload software)
         {
             var fileName = Path.GetFileName(settingsFile.FullPath).ToLowerInvariant();
 

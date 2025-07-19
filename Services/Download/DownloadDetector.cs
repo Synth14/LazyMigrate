@@ -1,4 +1,6 @@
-﻿namespace LazyMigrate.Services.Download
+﻿using LazyMigrate.Services.Download.Sources;
+
+namespace LazyMigrate.Services.Download
 {
     /// <summary>
     /// Service principal de détection des liens de téléchargement avec fallback en cascade
@@ -15,14 +17,14 @@
             // Ordre de priorité des sources (stratégie 1 en premier, puis fallbacks)
             _downloadSources = new List<IDownloadSource>
             {
-                new WebSearchDownloadSource(progressCallback),      // Stratégie 1 : Recherche web
-                new KnownSitesDownloadSource(progressCallback),     // Fallback 1 : Sites connus  
-                new GitHubDownloadSource(progressCallback),         // Fallback 2 : GitHub API
-                new WingetDownloadSource(progressCallback)          // Fallback 3 : Winget API
+                new KnownSitesDownloadSource(progressCallback),     // Stratégie 1 : Sites connus (RAPIDE)  
+                new GitHubDownloadSource(progressCallback),         // Stratégie 2 : GitHub API
+                new WingetDownloadSource(progressCallback),          // Stratégie 3 : Winget API
+                // new WebSearchDownloadSource(progressCallback),   // TEMPORAIREMENT DÉSACTIVÉ (trop lent)
             };
         }
 
-        public async Task<DownloadResult> FindDownloadLinksAsync(SoftwareInfo software)
+        public async Task<DownloadResult> FindDownloadLinksAsync(SoftwareWithDownload software)
         {
             _progressCallback?.Invoke($"🔍 Recherche téléchargement pour {software.Name}...");
 
@@ -88,10 +90,10 @@
         {
             // Stratégie : s'arrêter si on trouve via recherche web ou sites connus
             // Continuer pour GitHub/Winget pour avoir plus d'options
-            return source is WebSearchDownloadSource or KnownSitesDownloadSource;
+            return source.SourceName == "Web Search" || source.SourceName == "Known Sites";
         }
 
-        public async Task<List<DownloadResult>> FindDownloadLinksForMultipleSoftwareAsync(List<SoftwareInfo> softwareList)
+        public async Task<List<DownloadResult>> FindDownloadLinksForMultipleSoftwareAsync(List<SoftwareWithDownload> softwareList)
         {
             var results = new List<DownloadResult>();
             var total = softwareList.Count;

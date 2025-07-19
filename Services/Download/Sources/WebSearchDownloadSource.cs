@@ -21,13 +21,13 @@ namespace LazyMigrate.Services.Download.Sources
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         }
 
-        public bool CanHandle(SoftwareInfo software)
+        public bool CanHandle(SoftwareWithDownload software)
         {
             // Peut traiter tous les logiciels
             return true;
         }
 
-        public async Task<List<DownloadSource>> FindDownloadLinksAsync(SoftwareInfo software)
+        public async Task<List<DownloadSource>> FindDownloadLinksAsync(SoftwareWithDownload software)
         {
             var results = new List<DownloadSource>();
 
@@ -58,7 +58,7 @@ namespace LazyMigrate.Services.Download.Sources
             }
         }
 
-        private List<string> BuildSearchQueries(SoftwareInfo software)
+        private List<string> BuildSearchQueries(SoftwareWithDownload software)
         {
             var queries = new List<string>();
             var name = software.Name;
@@ -74,7 +74,7 @@ namespace LazyMigrate.Services.Download.Sources
             return queries;
         }
 
-        private async Task<List<DownloadSource>> SearchAndParseResults(string query, SoftwareInfo software)
+        private async Task<List<DownloadSource>> SearchAndParseResults(string query, SoftwareWithDownload software)
         {
             var results = new List<DownloadSource>();
 
@@ -100,7 +100,7 @@ namespace LazyMigrate.Services.Download.Sources
             return results;
         }
 
-        private List<DownloadSource> ExtractDownloadLinksFromSearchResults(string html, SoftwareInfo software)
+        private List<DownloadSource> ExtractDownloadLinksFromSearchResults(string html, SoftwareWithDownload software)
         {
             var results = new List<DownloadSource>();
 
@@ -147,7 +147,7 @@ namespace LazyMigrate.Services.Download.Sources
             return results;
         }
 
-        private bool IsValidDownloadUrl(string url, SoftwareInfo software)
+        private bool IsValidDownloadUrl(string url, SoftwareWithDownload software)
         {
             if (string.IsNullOrEmpty(url) || !Uri.IsWellFormedUriString(url, UriKind.Absolute))
                 return false;
@@ -164,7 +164,7 @@ namespace LazyMigrate.Services.Download.Sources
                    urlLower.Contains(nameLower.Replace(" ", "-"));
         }
 
-        private double CalculateConfidence(string url, SoftwareInfo software)
+        private double CalculateConfidence(string url, SoftwareWithDownload software)
         {
             double confidence = 0.5; // Base
             var urlLower = url.ToLowerInvariant();

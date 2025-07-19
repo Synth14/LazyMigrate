@@ -1,4 +1,4 @@
-﻿
+﻿using System.Linq;
 
 namespace LazyMigrate.ViewModels
 {
@@ -11,7 +11,7 @@ namespace LazyMigrate.ViewModels
         #region Properties
         public ObservableCollection<SoftwareWithDownload> SoftwareWithDownloads { get; set; }
         [ObservableProperty]
-        private ObservableCollection<SoftwareInfo> _softwareList = new();
+        private ObservableCollection<SoftwareWithDownload> _softwareList = new();
 
         [ObservableProperty]
         private string _scanStatus = "Prêt à analyser";
@@ -57,14 +57,14 @@ namespace LazyMigrate.ViewModels
             {
                 if (e.NewItems != null)
                 {
-                    foreach (SoftwareInfo item in e.NewItems)
+                    foreach (SoftwareWithDownload item in e.NewItems)
                     {
                         item.PropertyChanged += OnSoftwareItemChanged;
                     }
                 }
                 if (e.OldItems != null)
                 {
-                    foreach (SoftwareInfo item in e.OldItems)
+                    foreach (SoftwareWithDownload item in e.OldItems)
                     {
                         item.PropertyChanged -= OnSoftwareItemChanged;
                     }
@@ -76,7 +76,7 @@ namespace LazyMigrate.ViewModels
 
         private void OnSoftwareItemChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(SoftwareInfo.IsSelected))
+            if (e.PropertyName == nameof(SoftwareWithDownload.IsSelected))
             {
                 UpdateSelectedCount();
             }
@@ -301,87 +301,12 @@ namespace LazyMigrate.ViewModels
             }
         }
 
-        [RelayCommand]
-        private async Task DownloadAsync()
-        {
-            var selectedSoftware = SoftwareList.Where(s => s.IsSelected).ToList();
-
-            if (!selectedSoftware.Any())
-            {
-                MessageBox.Show("Aucun logiciel sélectionné pour le téléchargement.", "Information",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var folderDialog = new FolderBrowserDialog
-            {
-                Description = "Choisir le dossier de téléchargement des installateurs",
-                UseDescriptionForTitle = true,
-                ShowNewFolderButton = true,
-                SelectedPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LazyMigrate Downloads")
-            };
-
-            if (folderDialog.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                    IsDownloading = true;
-                    DownloadProgress = 0;
-                    DownloadStatus = "Initialisation des téléchargements...";
-                    _downloadCancellationTokenSource = new CancellationTokenSource();
-
-                    // Créer le téléchargeur avec callbacks de progression
-                    var downloader = new SoftwareDownloader(
-                        folderDialog.SelectedPath,
-                        // Callback de progression générale
-                        message => System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                            DownloadStatus = message;
-                        }),
-                        // Callback de progression détaillée
-                        progress => System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                            CurrentDownloadSoftware = progress.SoftwareName;
-                            DownloadProgress = progress.ProgressPercent;
-                            DownloadSpeed = progress.Speed;
-                            DownloadSpeedFormatted = FormatSpeed(progress.Speed);
-                            DownloadStatus = $"📥 {progress.SoftwareName}: {progress.ProgressPercent}% ({FormatBytes(progress.DownloadedBytes)}/{FormatBytes(progress.TotalBytes)})";
-                        })
-                    );
-
-                    // Lancer les téléchargements
-                    var results = await downloader.DownloadSoftwareAsync(selectedSoftware, _downloadCancellationTokenSource.Token);
-
-                    // Afficher le résumé détaillé
-                    await ShowDownloadSummaryAsync(results, folderDialog.SelectedPath);
-                }
-                catch (OperationCanceledException)
-                {
-                    DownloadStatus = "Téléchargements annulés par l'utilisateur";
-                    MessageBox.Show("Téléchargements annulés.", "Information",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    DownloadStatus = $"Erreur: {ex.Message}";
-                    MessageBox.Show($"Erreur lors des téléchargements:\n{ex.Message}", "Erreur",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-                finally
-                {
-                    IsDownloading = false;
-                    DownloadProgress = 0;
-                    CurrentDownloadSoftware = "";
-                    DownloadSpeedFormatted = "";
-                    _downloadCancellationTokenSource?.Dispose();
-                    _downloadCancellationTokenSource = null;
-                }
-            }
-        }
-
+ 
         #endregion
 
         #region Private Methods
 
-        private async Task ExportToFileAsync(List<SoftwareInfo> selectedSoftware, string fileName)
+        private async Task ExportToFileAsync(List<SoftwareWithDownload> selectedSoftware, string fileName)
         {
             var exportData = new LazyMigrateExport
             {
@@ -432,7 +357,7 @@ namespace LazyMigrate.ViewModels
             await File.WriteAllTextAsync(fileName, json);
         }
 
-        private async Task<List<string>> GetSettingsPathsAsync(SoftwareInfo software)
+        private async Task<List<string>> GetSettingsPathsAsync(SoftwareWithDownload software)
         {
             await Task.CompletedTask;
 
@@ -441,99 +366,107 @@ namespace LazyMigrate.ViewModels
             // Utiliser les chemins déjà détectés lors du scan
             return software.SettingsPaths.Select(sp => sp.Path).ToList();
         }
-
-        private async Task ShowDownloadSummaryAsync(List<DownloadResult> results, string downloadFolder)
+        [RelayCommand]
+        private void OpenDownloadLink(string url)
         {
-            var successful = results.Where(r => r.Status == Models.Download.DownloadStatus.Success).ToList();
-            var failed = results.Where(r => r.Status == Models.Download.DownloadStatus.Error).ToList();
-            var alreadyExists = results.Where(r => r.Status == Models.Download.DownloadStatus.AlreadyExists).ToList();
-            var noSource = results.Where(r => r.Status == Models.Download.DownloadStatus.NoSourceFound).ToList();
+            if (string.IsNullOrEmpty(url))
+                return;
 
-            var totalSize = successful.Concat(alreadyExists).Sum(r => r.FileSize);
-            var newDownloads = successful.Where(r => !string.IsNullOrEmpty(r.FilePath)).ToList();
-
-            // Créer le résumé détaillé
-            var summary = new System.Text.StringBuilder();
-            summary.AppendLine("🎉 TÉLÉCHARGEMENTS TERMINÉS !");
-            summary.AppendLine();
-            summary.AppendLine($"📊 RÉSUMÉ :");
-            summary.AppendLine($"  ✅ Téléchargés avec succès: {successful.Count}");
-            summary.AppendLine($"  📁 Déjà présents: {alreadyExists.Count}");
-            summary.AppendLine($"  🔍 Sans source trouvée: {noSource.Count}");
-            summary.AppendLine($"  ❌ Échecs: {failed.Count}");
-            summary.AppendLine();
-            summary.AppendLine($"💾 ESPACE DISQUE :");
-            summary.AppendLine($"  📦 Taille totale: {FormatBytes(totalSize)}");
-            summary.AppendLine($"  ⬇️ Nouveaux téléchargements: {FormatBytes(newDownloads.Sum(r => r.FileSize))}");
-            summary.AppendLine();
-            summary.AppendLine($"📂 DOSSIER : {downloadFolder}");
-
-            if (successful.Any())
+            try
             {
-                summary.AppendLine();
-                summary.AppendLine("✅ TÉLÉCHARGEMENTS RÉUSSIS :");
-                foreach (var result in successful.Take(10))
+                // Ouvrir le lien dans le navigateur par défaut
+                var psi = new ProcessStartInfo
                 {
-                    var fileName = Path.GetFileName(result.FilePath);
-                    var source = result.Source?.IsOfficial == true ? "🛡️ Officiel" : "🌐 Web";
-                    summary.AppendLine($"  • {fileName} ({FormatBytes(result.FileSize)}) - {source}");
-                }
-                if (successful.Count > 10)
-                {
-                    summary.AppendLine($"  ... et {successful.Count - 10} autres");
-                }
+                    FileName = url,
+                    UseShellExecute = true
+                };
+                Process.Start(psi);
             }
-
-            if (failed.Any())
+            catch (Exception ex)
             {
-                summary.AppendLine();
-                summary.AppendLine("❌ ÉCHECS :");
-                foreach (var result in failed.Take(5))
-                {
-                    summary.AppendLine($"  • {result.Software.Name}: {result.ErrorMessage}");
-                }
+                MessageBox.Show($"Impossible d'ouvrir le lien:\n{ex.Message}",
+                    "Erreur", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-
-            if (noSource.Any())
-            {
-                summary.AppendLine();
-                summary.AppendLine("🔍 AUCUNE SOURCE TROUVÉE :");
-                foreach (var result in noSource.Take(5))
-                {
-                    summary.AppendLine($"  • {result.Software.Name}");
-                }
-            }
-
-            // Afficher le résumé dans une MessageBox pour l'instant
-            // TODO: Implémenter DownloadSummaryWindow
-            MessageBox.Show(summary.ToString(), "Résumé des téléchargements",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-
-            // Proposer d'ouvrir le dossier
-            if (newDownloads.Count > 0 || alreadyExists.Count > 0)
-            {
-                var openFolder = MessageBox.Show("Voulez-vous ouvrir le dossier de téléchargement ?",
-                    "Ouvrir le dossier", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (openFolder == MessageBoxResult.Yes)
-                {
-                    try
-                    {
-                        System.Diagnostics.Process.Start("explorer.exe", downloadFolder);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Impossible d'ouvrir le dossier: {ex.Message}", "Erreur",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
-                }
-            }
-
-            // Mettre à jour le statut final
-            DownloadStatus = $"✅ Terminé: {successful.Count} téléchargés, {failed.Count} échecs";
         }
 
-        #endregion
+        [RelayCommand]
+        private async Task SearchDownloadsAsync()
+        {
+            var selectedSoftware = SoftwareList.Where(s => s.IsSelected).ToList();
+
+            if (!selectedSoftware.Any())
+            {
+                MessageBox.Show("Aucun logiciel sélectionné pour la recherche.", "Information",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                IsDownloading = true;
+                DownloadStatus = "🔍 Recherche des liens de téléchargement...";
+
+                // Marquer tous comme "en recherche"
+                foreach (var software in selectedSoftware)
+                {
+                    software.DownloadStatus = Models.Download.DownloadStatus.Searching;
+                    software.OnPropertyChanged(nameof(software.DownloadStatusText));
+                    software.OnPropertyChanged(nameof(software.BestDownloadUrl));
+                }
+
+                var detector = new Services.Download.DownloadDetector(message =>
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        DownloadStatus = message;
+                    });
+                });
+
+                var results = await detector.FindDownloadLinksForMultipleSoftwareAsync(selectedSoftware);
+
+                // Mettre à jour les statuts individuels
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    for (int i = 0; i < selectedSoftware.Count && i < results.Count; i++)
+                    {
+                        var software = selectedSoftware[i];
+                        var result = results[i];
+
+                        software.DownloadResult = result;
+                        software.DownloadStatus = result.IsSuccess ? Models.Download.DownloadStatus.Found : Models.Download.DownloadStatus.NotFound;
+
+                        // Forcer la mise à jour de l'UI
+                        software.OnPropertyChanged(nameof(software.DownloadStatusText));
+                        software.OnPropertyChanged(nameof(software.BestDownloadUrl));
+                    }
+                });
+
+                var successCount = results.Count(r => r.IsSuccess);
+                DownloadStatus = $"✅ Recherche terminée: {successCount}/{results.Count} liens trouvés";
+
+                MessageBox.Show($"Recherche terminée !\n\nLiens trouvés: {successCount}/{results.Count}\n\nVoir les colonnes 'Download' et 'Lien' pour les détails.",
+                    "Recherche de téléchargements", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                DownloadStatus = $"❌ Erreur: {ex.Message}";
+
+                // Marquer tous comme erreur
+                foreach (var software in selectedSoftware)
+                {
+                    software.DownloadStatus = Models.Download.DownloadStatus.Error;
+                    software.OnPropertyChanged(nameof(software.DownloadStatusText));
+                    software.OnPropertyChanged(nameof(software.BestDownloadUrl));
+                }
+
+                MessageBox.Show($"Erreur lors de la recherche:\n{ex.Message}", "Erreur",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsDownloading = false;
+            }
+        }
 
         #region Utility Methods
 
@@ -560,3 +493,4 @@ namespace LazyMigrate.ViewModels
         #endregion
     }
 }
+#endregion

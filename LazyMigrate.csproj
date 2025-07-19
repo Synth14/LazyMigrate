@@ -46,7 +46,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Services\Download\Engines\" />
 	  <Folder Include="Services\Download\Utilities\" />
 	  <Folder Include="Services\Export\" />
 	</ItemGroup>

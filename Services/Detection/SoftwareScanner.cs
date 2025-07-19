@@ -1,5 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-using LazyMigrate.Services.Detection.Scanners;
+﻿using LazyMigrate.Services.Detection.Scanners;
 
 namespace LazyMigrate.Services.Detection
 {
@@ -15,10 +14,10 @@ namespace LazyMigrate.Services.Detection
             _filterService = new LocalFilterService();
         }
 
-        public async Task<List<SoftwareInfo>> ScanInstalledSoftwareAsync(CancellationToken cancellationToken = default)
+        public async Task<List<SoftwareWithDownload>> ScanInstalledSoftwareAsync(CancellationToken cancellationToken = default)
         {
             _cancellationToken = cancellationToken;
-            var softwareList = new List<SoftwareInfo>();
+            var softwareList = new List<SoftwareWithDownload>();
 
             try
             {
@@ -65,9 +64,9 @@ namespace LazyMigrate.Services.Detection
             }
         }
 
-        private async Task<List<SoftwareInfo>> ScanRegistryAsync(RegistryView registryView)
+        private async Task<List<SoftwareWithDownload>> ScanRegistryAsync(RegistryView registryView)
         {
-            var softwareList = new List<SoftwareInfo>();
+            var softwareList = new List<SoftwareWithDownload>();
 
             try
             {
@@ -119,12 +118,12 @@ namespace LazyMigrate.Services.Detection
             return softwareList;
         }
 
-        private SoftwareInfo? CreateSoftwareFromRegistry(RegistryKey key)
+        private SoftwareWithDownload? CreateSoftwareFromRegistry(RegistryKey key)
         {
             var displayName = key.GetValue("DisplayName")?.ToString();
             if (string.IsNullOrWhiteSpace(displayName)) return null;
 
-            var software = new SoftwareInfo
+            var software = new SoftwareWithDownload
             {
                 Name = displayName,
                 Publisher = key.GetValue("Publisher")?.ToString() ?? "Inconnu",
@@ -156,9 +155,9 @@ namespace LazyMigrate.Services.Detection
             return software;
         }
 
-        private async Task<List<SoftwareInfo>> ScanProgramFilesAsync()
+        private async Task<List<SoftwareWithDownload>> ScanProgramFilesAsync()
         {
-            var softwareList = new List<SoftwareInfo>();
+            var softwareList = new List<SoftwareWithDownload>();
             var programFilesPaths = new[]
             {
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
@@ -202,7 +201,7 @@ namespace LazyMigrate.Services.Detection
             return softwareList;
         }
 
-        private SoftwareInfo? CreateSoftwareFromDirectory(DirectoryInfo directory)
+        private SoftwareWithDownload? CreateSoftwareFromDirectory(DirectoryInfo directory)
         {
             try
             {
@@ -210,7 +209,7 @@ namespace LazyMigrate.Services.Detection
                 var executables = directory.GetFiles("*.exe", SearchOption.TopDirectoryOnly);
                 if (!executables.Any()) return null;
 
-                var software = new SoftwareInfo
+                var software = new SoftwareWithDownload
                 {
                     Name = directory.Name,
                     Publisher = "Détecté Program Files",
@@ -260,7 +259,7 @@ namespace LazyMigrate.Services.Detection
             }
         }
 
-        private List<SoftwareInfo> CleanDuplicates(List<SoftwareInfo> softwareList)
+        private List<SoftwareWithDownload> CleanDuplicates(List<SoftwareWithDownload> softwareList)
         {
             return softwareList
                 .GroupBy(s => s.Name.ToLowerInvariant())

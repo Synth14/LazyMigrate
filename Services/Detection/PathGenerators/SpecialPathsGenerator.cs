@@ -1,5 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-using LazyMigrate.Services.Detection.PathGenerators.Interfaces;
+﻿using LazyMigrate.Services.Detection.PathGenerators.Interfaces;
 
 namespace LazyMigrate.Services.Detection.PathGenerators
 {
@@ -8,7 +7,7 @@ namespace LazyMigrate.Services.Detection.PathGenerators
     /// </summary>
     public class SpecialPathsGenerator : IPathGenerator
     {
-        public List<string> GenerateAllPaths(SoftwareInfo software, List<string> nameVariations, List<string> publisherVariations)
+        public List<string> GenerateAllPaths(SoftwareWithDownload software, List<string> nameVariations, List<string> publisherVariations)
         {
             var paths = new List<string>();
 
@@ -20,7 +19,7 @@ namespace LazyMigrate.Services.Detection.PathGenerators
             return paths;
         }
 
-        private List<string> GenerateKnownPublisherPaths(List<string> cleanNames, SoftwareInfo software)
+        private List<string> GenerateKnownPublisherPaths(List<string> cleanNames, SoftwareWithDownload software)
         {
             var paths = new List<string>();
 
@@ -158,7 +157,7 @@ namespace LazyMigrate.Services.Detection.PathGenerators
             return paths;
         }
 
-        private List<string> GenerateSpecializedPaths(SoftwareInfo software, List<string> cleanNames)
+        private List<string> GenerateSpecializedPaths(SoftwareWithDownload software, List<string> cleanNames)
         {
             var paths = new List<string>();
             var category = software.Category?.ToLowerInvariant() ?? "";

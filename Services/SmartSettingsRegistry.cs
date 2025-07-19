@@ -1,6 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-
-namespace LazyMigrate.Services
+﻿namespace LazyMigrate.Services
 {
     public class SmartSettingsDetector
     {
@@ -11,7 +9,7 @@ namespace LazyMigrate.Services
             _progressCallback = progressCallback;
         }
 
-        public async Task<List<SettingsFile>> DetectSettingsAsync(SoftwareInfo software)
+        public async Task<List<SettingsFile>> DetectSettingsAsync(SoftwareWithDownload software)
         {
             var settingsFiles = new List<SettingsFile>();
             var softwareName = software.Name;

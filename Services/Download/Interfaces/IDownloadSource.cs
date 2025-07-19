@@ -1,6 +1,4 @@
-﻿
-
-namespace LazyMigrate.Services.Download.Interfaces
+﻿namespace LazyMigrate.Services.Download.Interfaces
 {
     public interface IDownloadSource
     {
@@ -17,11 +15,11 @@ namespace LazyMigrate.Services.Download.Interfaces
         /// <summary>
         /// Rechercher les liens de téléchargement pour un logiciel
         /// </summary>
-        Task<List<DownloadSource>> FindDownloadLinksAsync(SoftwareInfo software);
+        Task<List<DownloadSource>> FindDownloadLinksAsync(SoftwareWithDownload software);
 
         /// <summary>
         /// Vérifier si cette source peut traiter ce type de logiciel
         /// </summary>
-        bool CanHandle(SoftwareInfo software);
+        bool CanHandle(SoftwareWithDownload software);
     }
 }

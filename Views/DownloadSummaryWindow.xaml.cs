@@ -60,7 +60,7 @@ namespace LazyMigrate.Views
         {
             try
             {
-                Clipboard.SetText(_summaryText);
+                System.Windows.Forms.Clipboard.SetText(_summaryText);
 
                 // Feedback visuel temporaire
                 var originalContent = CopyLogButton.Content;

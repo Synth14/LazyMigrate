@@ -26,3 +26,8 @@ global using System.Windows;
 global using System.Windows.Forms;
 global using MessageBox = System.Windows.MessageBox;
 global using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
+global using LazyMigrate.Services.Download.Interfaces;
+global using LazyMigrate.Services.Detection.PathGenerators;
+global using LazyMigrate.Services.Detection.PathGenerators.Interfaces;
+global using LazyMigrate.Services.Detection.Scanners;
+global using LazyMigrate.Services.Detection.Utilities;

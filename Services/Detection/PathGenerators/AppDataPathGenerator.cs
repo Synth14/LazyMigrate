@@ -1,5 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-using LazyMigrate.Services.Detection.PathGenerators.Interfaces;
+﻿using LazyMigrate.Services.Detection.PathGenerators.Interfaces;
 
 namespace LazyMigrate.Services.Detection.PathGenerators
 {
@@ -8,7 +7,7 @@ namespace LazyMigrate.Services.Detection.PathGenerators
     /// </summary>
     public class AppDataPathGenerator : IPathGenerator
     {
-        public List<string> GenerateAllPaths(SoftwareInfo software, List<string> nameVariations, List<string> publisherVariations)
+        public List<string> GenerateAllPaths(SoftwareWithDownload software, List<string> nameVariations, List<string> publisherVariations)
         {
             var paths = new List<string>();
 

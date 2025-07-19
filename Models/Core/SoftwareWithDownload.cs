@@ -1,13 +1,15 @@
-﻿using LazyMigrate.Models.Download;
-
-namespace LazyMigrate.Models.Core
+﻿namespace LazyMigrate.Models.Download
 {
-    public class SoftwareInfo : INotifyPropertyChanged
+    /// <summary>
+    /// Modèle principal pour un logiciel avec gestion des téléchargements et settings
+    /// </summary>
+    public class SoftwareWithDownload : INotifyPropertyChanged
     {
         private bool _isSelected;
         private bool _includeSettings;
         private string _status = "Détecté";
 
+        #region Propriétés de base du logiciel
         public string Name { get; set; } = string.Empty;
         public string Publisher { get; set; } = string.Empty;
         public string Version { get; set; } = string.Empty;
@@ -20,8 +22,11 @@ namespace LazyMigrate.Models.Core
 
         public List<string> ExecutablePaths { get; set; } = new();
         public List<DownloadSourceInfo> DownloadSources { get; set; } = new();
+        #endregion
 
-        // Et ajoutez cette propriété si elle n'existe pas :
+        #region Propriétés Settings
+        public List<SettingsPath> SettingsPaths { get; set; } = new();
+
         public string SettingsStatus
         {
             get
@@ -33,7 +38,9 @@ namespace LazyMigrate.Models.Core
                 return "❌ Aucun";
             }
         }
-        // Propriétés pour l'export
+        #endregion
+
+        #region Propriétés UI et Export
         public bool IsSelected
         {
             get => _isSelected;
@@ -63,11 +70,53 @@ namespace LazyMigrate.Models.Core
                 OnPropertyChanged();
             }
         }
+        #endregion
 
-        // Métadonnées de la base de données
-        public List<SettingsPath> SettingsPaths { get; set; } = new();
+        #region Propriétés Download
+        public DownloadStatus DownloadStatus { get; set; } = DownloadStatus.NotSearched;
+        public DownloadResult? DownloadResult { get; set; }
 
-        // Propriété calculée pour l'affichage
+        public string DownloadStatusText => DownloadStatus switch
+        {
+            DownloadStatus.NotSearched => "⚪ Non cherché",
+            DownloadStatus.Searching => "🔍 Recherche...",
+            DownloadStatus.Found => $"✅ {DownloadResult?.TotalLinksFound} lien(s)",
+            DownloadStatus.NotFound => "❌ Aucun lien",
+            DownloadStatus.Error => "⚠️ Erreur",
+            _ => "❓ Inconnu"
+        };
+
+        public string BestDownloadUrl
+        {
+            get
+            {
+                var bestLink = DownloadResult?.BestDownloadLink;
+                if (bestLink?.IsValid == true && !string.IsNullOrEmpty(bestLink.DownloadUrl))
+                {
+                    return bestLink.DownloadUrl;
+                }
+                return "";
+            }
+        }
+
+        public string BestDownloadDisplayText
+        {
+            get
+            {
+                var bestLink = DownloadResult?.BestDownloadLink;
+                if (bestLink?.IsValid == true && !string.IsNullOrEmpty(bestLink.DownloadUrl))
+                {
+                    // Afficher le nom du site ou un texte court
+                    var uri = new Uri(bestLink.DownloadUrl);
+                    var domain = uri.Host.Replace("www.", "");
+                    return $"📥 {domain}";
+                }
+                return "Aucun lien";
+            }
+        }
+        #endregion
+
+        #region Propriétés calculées
         public string EstimatedSizeFormatted
         {
             get
@@ -87,13 +136,15 @@ namespace LazyMigrate.Models.Core
                 return $"{len:0.##} {sizes[order]}";
             }
         }
+        #endregion
 
+        #region INotifyPropertyChanged
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        public void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+        #endregion
     }
-
 }

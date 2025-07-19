@@ -1,6 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-
-namespace LazyMigrate.Services.Detection.PathGenerators.Interfaces
+﻿namespace LazyMigrate.Services.Detection.PathGenerators.Interfaces
 {
     /// <summary>
     /// Interface pour les générateurs de chemins de settings
@@ -10,6 +8,6 @@ namespace LazyMigrate.Services.Detection.PathGenerators.Interfaces
         /// <summary>
         /// Génère tous les chemins possibles pour un logiciel
         /// </summary>
-        List<string> GenerateAllPaths(SoftwareInfo software, List<string> nameVariations, List<string> publisherVariations);
+        List<string> GenerateAllPaths(SoftwareWithDownload software, List<string> nameVariations, List<string> publisherVariations);
     }
 }

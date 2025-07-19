@@ -1,6 +1,4 @@
-﻿using LazyMigrate.Models.Core;
-
-namespace LazyMigrate.Services.Detection.Scanners
+﻿namespace LazyMigrate.Services.Detection.Scanners
 {
     public class LocalFilterService
     {
@@ -103,13 +101,13 @@ namespace LazyMigrate.Services.Detection.Scanners
                 _excludePublishers.Add(publisher);
         }
 
-        public Task<LocalFilterResult> ShouldIncludeSoftwareAsync(SoftwareInfo software)
+        public Task<LocalFilterResult> ShouldIncludeSoftwareAsync(SoftwareWithDownload software)
         {
             var result = EvaluateSoftware(software);
             return Task.FromResult(result);
         }
 
-        private LocalFilterResult EvaluateSoftware(SoftwareInfo software)
+        private LocalFilterResult EvaluateSoftware(SoftwareWithDownload software)
         {
             // 1. Vérifier les patterns d'exclusion
             foreach (var pattern in _excludePatterns)
@@ -169,7 +167,7 @@ namespace LazyMigrate.Services.Detection.Scanners
             return ApplyHeuristics(software);
         }
 
-        private LocalFilterResult ApplyHeuristics(SoftwareInfo software)
+        private LocalFilterResult ApplyHeuristics(SoftwareWithDownload software)
         {
             // Trop petit = probablement un composant
             if (software.EstimatedSize > 0 && software.EstimatedSize < 1024 * 1024)
